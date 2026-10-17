@@ -214,7 +214,7 @@ pub struct Transport {
     pub(crate) packet_manager: PacketBuilder,
     /// Compression workspace shared by all channel senders and the packet builder.
     pub(crate) compression_scratch: CompressionScratch,
-    /// Stable fragment payload size derived from the link's minimum MTU.
+    /// Fragment payload size of the senders, derived from the link's minimum MTU.
     fragment_size: usize,
     pub compression: CompressionConfig,
 
@@ -323,7 +323,7 @@ impl Transport {
         }
     }
 
-    /// Derives the fragment size from the link's minimum MTU.
+    /// Derives the senders' fragment size from the link's minimum MTU.
     fn initialize_fragment_size(&mut self, min_mtu: usize) -> Result<(), PacketError> {
         let fragment_size = fragment_size_for_min_mtu(min_mtu).ok_or(PacketError::MtuTooSmall {
             actual: min_mtu,
@@ -332,9 +332,6 @@ impl Transport {
         if self.fragment_size != fragment_size {
             self.fragment_size = fragment_size;
             self.senders
-                .values_mut()
-                .for_each(|channel| channel.set_fragment_size(fragment_size));
-            self.receivers
                 .values_mut()
                 .for_each(|channel| channel.set_fragment_size(fragment_size));
         }
@@ -448,9 +445,10 @@ impl Transport {
         settings: ChannelSettings,
         channel_id: ChannelId,
     ) {
-        let mut channel = ChannelReceive::new(ChannelKind::of::<C>(), &settings);
-        channel.set_fragment_size(self.fragment_size);
-        self.receivers.insert(channel_id, channel);
+        self.receivers.insert(
+            channel_id,
+            ChannelReceive::new(ChannelKind::of::<C>(), &settings),
+        );
     }
 
     /// Adds a receiving channel using the channel's registered settings and wire ID.
@@ -539,9 +537,7 @@ impl Transport {
     pub(crate) fn reset(&mut self, registry: &ChannelRegistry) {
         self.receivers.iter_mut().for_each(|(channel_id, r)| {
             let settings = registry.settings_from_net_id(*channel_id).unwrap();
-            let mut channel = ChannelReceive::new(r.channel_kind(), settings);
-            channel.set_fragment_size(self.fragment_size);
-            *r = channel;
+            *r = ChannelReceive::new(r.channel_kind(), settings);
         });
         self.senders.iter_mut().for_each(|(channel_kind, s)| {
             let settings = registry.settings(*channel_kind).unwrap();

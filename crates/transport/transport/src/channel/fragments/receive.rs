@@ -11,30 +11,25 @@ use crate::packet::compression::CompressionAlgorithm;
 use crate::packet::compression::{CompressionConfig, decompress_payload};
 use crate::packet::error::PacketError;
 use crate::packet::message::{FragmentCompression, FragmentData, MessageId};
-use crate::packet::packet::FRAGMENT_SIZE;
 use bytes::Bytes;
 use core::time::Duration;
 use lightyear_core::tick::Tick;
 use tracing::trace;
 
 /// `FragmentReceiver` is used to reconstruct fragmented messages
+///
+/// Each sender derives its fragment size from its own link, so the receiver takes the size of a
+/// message's fragments from those fragments instead of from its own link.
 #[derive(Debug)]
 pub struct FragmentReceiver {
     fragment_messages: HashMap<MessageId, FragmentConstructor>,
-    fragment_size: usize,
 }
 
 impl FragmentReceiver {
     pub fn new() -> Self {
         Self {
             fragment_messages: HashMap::default(),
-            fragment_size: FRAGMENT_SIZE,
         }
-    }
-
-    pub(crate) fn set_fragment_size(&mut self, fragment_size: usize) {
-        debug_assert!(fragment_size > 0);
-        self.fragment_size = fragment_size;
     }
 
     /// Discard all messages for which the latest fragment was received before the cleanup time
@@ -78,15 +73,10 @@ impl FragmentReceiver {
 
         let message_id = fragment.message_id;
         let fragment_compression = fragment.compression;
-        if !self.fragment_messages.contains_key(&message_id) {
-            let constructor =
-                FragmentConstructor::new(remote_sent_tick, num_fragments, self.fragment_size)?;
-            self.fragment_messages.insert(message_id, constructor);
-        }
         let fragment_message = self
             .fragment_messages
-            .get_mut(&message_id)
-            .expect("fragment constructor was just inserted");
+            .entry(message_id)
+            .or_insert_with(|| FragmentConstructor::new(remote_sent_tick, num_fragments));
         if fragment_message.num_fragments != num_fragments {
             return Err(ChannelReceiveError::FragmentCountMismatch {
                 expected: fragment_message.num_fragments,
@@ -99,12 +89,9 @@ impl FragmentReceiver {
             return Err(ChannelReceiveError::MissingFragmentCompression);
         }
 
-        // completed the fragmented message!
-        if let Some(payload) = fragment_message.receive_fragment(
-            fragment_index,
-            fragment.bytes.as_ref(),
-            current_time,
-        )? {
+        if let Some(payload) =
+            fragment_message.receive_fragment(fragment_index, fragment.bytes, current_time)?
+        {
             let fragment_compression = fragment_message
                 .compression
                 .ok_or(ChannelReceiveError::MissingFragmentCompression)?;
@@ -122,32 +109,47 @@ impl FragmentReceiver {
 /// Data structure to reconstruct a single fragmented message from individual fragments
 pub struct FragmentConstructor {
     num_fragments: usize,
-    fragment_size: usize,
     num_received_fragments: usize,
     received: Vec<bool>,
-    // bytes: Bytes,
-    bytes: Vec<u8>,
+    layout: FragmentLayout,
 
     tick: Tick,
     compression: Option<FragmentCompression>,
     last_received: Option<Duration>,
 }
 
+/// Where each fragment of a message goes in the reassembled message.
+#[derive(Debug, Clone)]
+enum FragmentLayout {
+    /// No non-final fragment was received, so the sender's fragment size is not known yet. The
+    /// final fragment waits here when it arrives first, because its offset depends on that size.
+    Unknown {
+        final_fragment: Option<Bytes>,
+    },
+    Known(ReassemblyBuffer),
+}
+
+/// The message bytes, with the fragment size of the first non-final fragment received. The sender
+/// splits a message into fragments of one size, so every other non-final fragment must have it too.
+#[derive(Debug, Clone)]
+struct ReassemblyBuffer {
+    fragment_size: usize,
+    bytes: Vec<u8>,
+}
+
 impl FragmentConstructor {
-    pub fn new(tick: Tick, num_fragments: usize, fragment_size: usize) -> Result<Self> {
-        let max_message_size = num_fragments
-            .checked_mul(fragment_size)
-            .ok_or(ChannelReceiveError::FragmentedMessageSizeOverflow)?;
-        Ok(Self {
+    pub fn new(tick: Tick, num_fragments: usize) -> Self {
+        Self {
             num_fragments,
-            fragment_size,
             num_received_fragments: 0,
             received: vec![false; num_fragments],
-            bytes: vec![0; max_message_size],
+            layout: FragmentLayout::Unknown {
+                final_fragment: None,
+            },
             tick,
             compression: None,
             last_received: None,
-        })
+        }
     }
 
     pub fn set_compression(&mut self, compression: FragmentCompression) -> Result<()> {
@@ -167,54 +169,105 @@ impl FragmentConstructor {
     pub fn receive_fragment(
         &mut self,
         fragment_index: usize,
-        bytes: &[u8],
+        bytes: Bytes,
         received_time: Option<Duration>,
     ) -> Result<Option<(Tick, Bytes)>> {
         self.last_received = received_time;
 
         let is_last_fragment = fragment_index == self.num_fragments - 1;
-
-        if !is_last_fragment && bytes.len() != self.fragment_size {
-            return Err(ChannelReceiveError::InvalidNonFinalFragmentSize {
-                actual: bytes.len(),
-                expected: self.fragment_size,
-            });
-        }
-        if is_last_fragment && bytes.len() > self.fragment_size {
+        if !is_last_fragment {
+            self.learn_fragment_size(bytes.len())?;
+        } else if let FragmentLayout::Known(buffer) = &self.layout
+            && bytes.len() > buffer.fragment_size
+        {
             return Err(ChannelReceiveError::InvalidFinalFragmentSize {
                 actual: bytes.len(),
-                max: self.fragment_size,
+                max: buffer.fragment_size,
             });
         }
 
-        if !self.received[fragment_index] {
-            self.received[fragment_index] = true;
-            self.num_received_fragments += 1;
+        if self.received[fragment_index] {
+            return Ok(None);
+        }
+        self.received[fragment_index] = true;
+        self.num_received_fragments += 1;
 
-            if is_last_fragment {
-                let len = (self.num_fragments - 1)
-                    .checked_mul(self.fragment_size)
-                    .and_then(|len| len.checked_add(bytes.len()))
-                    .ok_or(ChannelReceiveError::FragmentedMessageSizeOverflow)?;
-                self.bytes.resize(len, 0);
+        match &mut self.layout {
+            FragmentLayout::Known(buffer) => buffer.write(fragment_index, is_last_fragment, &bytes),
+            // The only fragment is also the whole message.
+            FragmentLayout::Unknown { .. } if self.num_fragments == 1 => {
+                return Ok(Some((self.tick, bytes)));
             }
-
-            let start = fragment_index
-                .checked_mul(self.fragment_size)
-                .ok_or(ChannelReceiveError::FragmentedMessageSizeOverflow)?;
-            let end = start
-                .checked_add(bytes.len())
-                .ok_or(ChannelReceiveError::FragmentedMessageSizeOverflow)?;
-            self.bytes[start..end].copy_from_slice(bytes);
+            FragmentLayout::Unknown { final_fragment } => *final_fragment = Some(bytes),
         }
 
         if self.num_received_fragments == self.num_fragments {
             trace!("Received all fragments!");
-            let payload = core::mem::take(&mut self.bytes);
+            let FragmentLayout::Known(buffer) = &mut self.layout else {
+                unreachable!("a message of several fragments has a non-final fragment");
+            };
+            let payload = core::mem::take(&mut buffer.bytes);
             return Ok(Some((self.tick, payload.into())));
         }
 
         Ok(None)
+    }
+
+    /// Checks a non-final fragment's size against the message's fragment size, or makes it the
+    /// message's fragment size if it is the first non-final fragment.
+    fn learn_fragment_size(&mut self, fragment_size: usize) -> Result<()> {
+        let final_fragment = match &mut self.layout {
+            FragmentLayout::Known(buffer) => {
+                return if fragment_size == buffer.fragment_size {
+                    Ok(())
+                } else {
+                    Err(ChannelReceiveError::InvalidNonFinalFragmentSize {
+                        actual: fragment_size,
+                        expected: buffer.fragment_size,
+                    })
+                };
+            }
+            FragmentLayout::Unknown { final_fragment } => final_fragment,
+        };
+        if fragment_size == 0 {
+            return Err(ChannelReceiveError::EmptyNonFinalFragment);
+        }
+        if let Some(final_fragment) = final_fragment
+            && final_fragment.len() > fragment_size
+        {
+            return Err(ChannelReceiveError::InvalidFinalFragmentSize {
+                actual: final_fragment.len(),
+                max: fragment_size,
+            });
+        }
+        let max_message_size = self
+            .num_fragments
+            .checked_mul(fragment_size)
+            .ok_or(ChannelReceiveError::FragmentedMessageSizeOverflow)?;
+
+        let mut buffer = ReassemblyBuffer {
+            fragment_size,
+            bytes: vec![0; max_message_size],
+        };
+        if let Some(final_fragment) = final_fragment.take() {
+            buffer.write(self.num_fragments - 1, true, &final_fragment);
+        }
+        self.layout = FragmentLayout::Known(buffer);
+        Ok(())
+    }
+}
+
+impl ReassemblyBuffer {
+    /// `fragment` must hold `fragment_size` bytes, or at most that many if it is the final one.
+    fn write(&mut self, fragment_index: usize, is_last_fragment: bool, fragment: &[u8]) {
+        // Cannot overflow: the buffer holds `num_fragments * fragment_size` bytes until the final
+        // fragment shortens it, and every non-final fragment lies before the final one.
+        let start = fragment_index * self.fragment_size;
+        let end = start + fragment.len();
+        if is_last_fragment {
+            self.bytes.truncate(end);
+        }
+        self.bytes[start..end].copy_from_slice(fragment);
     }
 }
 
@@ -281,6 +334,8 @@ mod tests {
     use crate::channel::fragments::FragmentSender;
     #[cfg(feature = "compression_lz4")]
     use crate::packet::compression::CompressionScratch;
+    use crate::packet::message::FragmentIndex;
+    use crate::packet::packet::FRAGMENT_SIZE;
 
     use super::*;
 
@@ -312,44 +367,127 @@ mod tests {
         Ok(())
     }
 
+    /// The receiver is never told the sender's fragment size, which here is smaller than, equal to
+    /// and larger than the default. Every message is `2 * fragment_size + 26` bytes, so it splits
+    /// into fragments of `fragment_size`, `fragment_size` and 26 bytes, received in every order.
     #[test]
-    fn reassembles_out_of_order_fragments_with_non_default_size() -> Result<()> {
-        let mut sender = FragmentSender::new();
-        sender.set_fragment_size(37);
-        let message_bytes = Bytes::from(vec![3u8; 100]);
-        let fragments = sender.build_fragments(MessageId(4), message_bytes.clone());
-        let mut receiver = FragmentReceiver::new();
-        receiver.set_fragment_size(37);
+    fn reassembles_fragments_of_any_sender_fragment_size_in_any_order() -> Result<()> {
+        const ORDERS: [[usize; 3]; 6] = [
+            [0, 1, 2],
+            [0, 2, 1],
+            [1, 0, 2],
+            [1, 2, 0],
+            [2, 0, 1],
+            [2, 1, 0],
+        ];
+        for fragment_size in [37, FRAGMENT_SIZE, 2 * FRAGMENT_SIZE] {
+            let mut sender = FragmentSender::new();
+            sender.set_fragment_size(fragment_size);
+            // Every byte differs from its neighbours, so a fragment written at a wrong offset
+            // changes the message.
+            let message_bytes: Bytes = (0..2 * fragment_size + 26)
+                .map(|i| (i % 251) as u8)
+                .collect::<Vec<u8>>()
+                .into();
+            let fragments = sender.build_fragments(MessageId(4), message_bytes.clone());
+            assert_eq!(
+                fragments
+                    .iter()
+                    .map(|fragment| fragment.bytes.len())
+                    .collect::<Vec<_>>(),
+                [fragment_size, fragment_size, 26]
+            );
 
-        assert_eq!(fragments.len(), 3);
-        assert_eq!(
-            receiver.receive_fragment(
-                fragments[2].clone(),
-                Tick(2),
-                None,
-                CompressionConfig::DISABLED,
-            )?,
-            None
-        );
-        assert_eq!(
-            receiver.receive_fragment(
-                fragments[0].clone(),
-                Tick(0),
-                None,
-                CompressionConfig::DISABLED,
-            )?,
-            None
-        );
-        assert_eq!(
-            receiver.receive_fragment(
-                fragments[1].clone(),
-                Tick(1),
-                None,
-                CompressionConfig::DISABLED,
-            )?,
-            Some((Tick(2), message_bytes))
-        );
+            for order in ORDERS {
+                let mut receiver = FragmentReceiver::new();
+                let mut result = None;
+                for index in order {
+                    assert_eq!(result, None, "size {fragment_size}, order {order:?}");
+                    result = receiver.receive_fragment(
+                        fragments[index].clone(),
+                        Tick(index as u32),
+                        None,
+                        CompressionConfig::DISABLED,
+                    )?;
+                }
+                assert_eq!(
+                    result,
+                    Some((Tick(order[0] as u32), message_bytes.clone())),
+                    "size {fragment_size}, order {order:?}"
+                );
+            }
+        }
         Ok(())
+    }
+
+    /// Feeds hand-made fragments of a message with `num_fragments` fragments, given as
+    /// `(fragment index, byte count)`, and returns the result of the last one.
+    fn receive_fragments(
+        num_fragments: u64,
+        fragments: &[(u64, usize)],
+    ) -> Result<Option<(Tick, Bytes)>> {
+        let mut receiver = FragmentReceiver::new();
+        let mut result = Ok(None);
+        for &(index, len) in fragments {
+            assert!(matches!(result, Ok(None)), "{fragments:?}: {result:?}");
+            let fragment = FragmentData {
+                message_id: MessageId(9),
+                fragment_id: FragmentIndex(index),
+                num_fragments: FragmentIndex(num_fragments),
+                compression: (index == 0).then_some(FragmentCompression::None),
+                bytes: Bytes::from(vec![index as u8; len]),
+            };
+            result =
+                receiver.receive_fragment(fragment, Tick(0), None, CompressionConfig::DISABLED);
+        }
+        result
+    }
+
+    #[test]
+    fn fragment_sizes_must_match_the_first_non_final_fragment() {
+        assert!(matches!(
+            receive_fragments(3, &[(0, 37), (1, 36)]),
+            Err(ChannelReceiveError::InvalidNonFinalFragmentSize {
+                actual: 36,
+                expected: 37
+            })
+        ));
+        assert!(matches!(
+            receive_fragments(3, &[(1, 37), (0, 38)]),
+            Err(ChannelReceiveError::InvalidNonFinalFragmentSize {
+                actual: 38,
+                expected: 37
+            })
+        ));
+        assert!(matches!(
+            receive_fragments(3, &[(0, 37), (2, 38)]),
+            Err(ChannelReceiveError::InvalidFinalFragmentSize {
+                actual: 38,
+                max: 37
+            })
+        ));
+        // The final fragment arrives before the size is known, so the first non-final fragment
+        // rejects it.
+        assert!(matches!(
+            receive_fragments(3, &[(2, 38), (0, 37)]),
+            Err(ChannelReceiveError::InvalidFinalFragmentSize {
+                actual: 38,
+                max: 37
+            })
+        ));
+        assert!(matches!(
+            receive_fragments(3, &[(0, 0)]),
+            Err(ChannelReceiveError::EmptyNonFinalFragment)
+        ));
+
+        // A final fragment equal to the fragment size, and a message of one fragment with no
+        // non-final fragment to set the size: 37 + 37 + 37 = 111 bytes, and 5 bytes.
+        let complete = |result: Result<Option<(Tick, Bytes)>>| result.unwrap().unwrap().1.len();
+        assert_eq!(
+            complete(receive_fragments(3, &[(2, 37), (1, 37), (0, 37)])),
+            111
+        );
+        assert_eq!(complete(receive_fragments(1, &[(0, 5)])), 5);
     }
 
     #[cfg(feature = "compression_lz4")]

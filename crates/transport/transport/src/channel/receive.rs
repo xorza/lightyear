@@ -43,6 +43,8 @@ pub enum ChannelReceiveError {
     FragmentDecompressionFailed,
     #[error("decompressed fragment payload size {actual} exceeds configured limit {limit}")]
     FragmentDecompressedPayloadTooLarge { actual: usize, limit: usize },
+    #[error("non-final fragment is empty")]
+    EmptyNonFinalFragment,
     #[error("non-final fragment has size {actual}, expected {expected}")]
     InvalidNonFinalFragmentSize { actual: usize, expected: usize },
     #[error("final fragment has size {actual}, maximum {max}")]
@@ -134,10 +136,6 @@ impl ChannelReceive {
     /// The type-level channel key associated with this channel.
     pub fn channel_kind(&self) -> ChannelKind {
         self.channel_kind
-    }
-
-    pub(crate) fn set_fragment_size(&mut self, fragment_size: usize) {
-        self.fragments.set_fragment_size(fragment_size);
     }
 
     pub(crate) fn update(&mut self, now: Duration) {

@@ -714,6 +714,7 @@ mod tests {
     use crate::packet::packet::PacketId;
     use crate::packet::priority_manager::PriorityConfig;
     use bevy_ecs::system::RunSystemOnce;
+    use lightyear_link::DEFAULT_MTU;
 
     struct RetryChannel;
     struct DiscardChannel;
@@ -916,63 +917,75 @@ mod tests {
         assert!(channel.message_nacks().is_empty());
     }
 
+    /// The two links have different minimum MTUs in both directions, so the sender's fragment
+    /// size differs from the one the receiver's own link gives.
     #[test]
-    fn packet_builder_uses_link_mtu_for_fragmentation_and_packet_size() {
-        let settings = ChannelSettings::default();
-        let mut registry = ChannelRegistry::default();
-        let (channel_kind, channel_id) = registry.add_channel::<SmallMtuChannel>(settings);
+    fn fragments_follow_the_sender_link_mtu_and_reassemble_on_any_link() {
+        for (sender_mtu, receiver_mtu) in [(256, DEFAULT_MTU), (DEFAULT_MTU, 256)] {
+            let settings = ChannelSettings::default();
+            let mut registry = ChannelRegistry::default();
+            let (channel_kind, channel_id) = registry.add_channel::<SmallMtuChannel>(settings);
 
-        let mut transport = Transport::default();
-        transport.add_channel_send::<SmallMtuChannel>(settings, channel_id);
-        transport.add_channel_receive::<SmallMtuChannel>(settings, channel_id);
+            let mut sender_transport = Transport::default();
+            sender_transport.add_channel_send::<SmallMtuChannel>(settings, channel_id);
+            let mut receiver_transport = Transport::default();
+            receiver_transport.add_channel_receive::<SmallMtuChannel>(settings, channel_id);
 
-        let mut world = World::new();
-        world.insert_resource(registry);
-        world.init_resource::<Time<Real>>();
-        world.init_resource::<LocalTimeline>();
-        let entity = world
-            .spawn((
-                Link::default().with_mtu(lightyear_link::LinkMtu::new(256)),
-                Linked,
-                transport,
-            ))
-            .id();
-        let expected = Bytes::from(vec![5; 700]);
-        world
-            .get::<Transport>(entity)
-            .unwrap()
-            .send_erased(channel_kind, expected.clone(), 1.0)
-            .unwrap();
+            let mut world = World::new();
+            world.insert_resource(registry);
+            world.init_resource::<Time<Real>>();
+            world.init_resource::<LocalTimeline>();
+            let sender = world
+                .spawn((
+                    Link::default().with_mtu(lightyear_link::LinkMtu::new(sender_mtu)),
+                    Linked,
+                    sender_transport,
+                ))
+                .id();
+            let receiver = world
+                .spawn((
+                    Link::default().with_mtu(lightyear_link::LinkMtu::new(receiver_mtu)),
+                    Linked,
+                    receiver_transport,
+                ))
+                .id();
+            let expected = Bytes::from(vec![5; 3000]);
+            world
+                .get::<Transport>(sender)
+                .unwrap()
+                .send_erased(channel_kind, expected.clone(), 1.0)
+                .unwrap();
 
-        world.run_system_once(TransportPlugin::buffer_send).unwrap();
+            world.run_system_once(TransportPlugin::buffer_send).unwrap();
 
-        let packets = world
-            .get_mut::<Link>(entity)
-            .unwrap()
-            .send
-            .drain()
-            .collect::<Vec<_>>();
-        assert!(packets.len() > 1);
-        assert!(packets.iter().all(|packet| packet.len() <= 256));
+            let packets = world
+                .get_mut::<Link>(sender)
+                .unwrap()
+                .send
+                .drain()
+                .collect::<Vec<_>>();
+            assert!(packets.len() > 1);
+            assert!(packets.iter().all(|packet| packet.len() <= sender_mtu));
 
-        {
-            let mut link = world.get_mut::<Link>(entity).unwrap();
-            packets.into_iter().for_each(|packet| {
-                link.recv.push_raw(packet);
-            });
+            {
+                let mut link = world.get_mut::<Link>(receiver).unwrap();
+                packets.into_iter().for_each(|packet| {
+                    link.recv.push_raw(packet);
+                });
+            }
+            world
+                .run_system_once(TransportPlugin::buffer_receive)
+                .unwrap();
+
+            let mut transport = world.get_mut::<Transport>(receiver).unwrap();
+            let received = transport
+                .receivers
+                .get_mut(&channel_id)
+                .unwrap()
+                .read_message()
+                .unwrap()
+                .1;
+            assert_eq!(received, expected, "sender MTU {sender_mtu}");
         }
-        world
-            .run_system_once(TransportPlugin::buffer_receive)
-            .unwrap();
-
-        let mut transport = world.get_mut::<Transport>(entity).unwrap();
-        let received = transport
-            .receivers
-            .get_mut(&channel_id)
-            .unwrap()
-            .read_message()
-            .unwrap()
-            .1;
-        assert_eq!(received, expected);
     }
 }
