@@ -902,7 +902,10 @@ mod tests {
             let mut receiver_transport = Transport::default();
             receiver_transport.add_channel_receive::<SmallMtuChannel>(settings, channel_id);
 
-            let mut world = World::new();
+            // Two links take the parallel path of the transport's query, which needs a task pool.
+            let mut app = App::new();
+            app.add_plugins(bevy_app::TaskPoolPlugin::default());
+            let world = app.world_mut();
             world.insert_resource(registry);
             world.init_resource::<Time<Real>>();
             world.init_resource::<LocalTimeline>();

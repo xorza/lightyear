@@ -452,20 +452,30 @@ mod tests {
 
     #[cfg(feature = "compression_lz4")]
     #[test]
+    /// The size prefix of a 32-byte payload is checked against the limit before decompressing:
+    /// a limit of exactly 32 takes it, and 31 refuses it with both numbers.
     fn lz4_decompression_respects_configured_size_cap() {
-        let compressed = lz4_flex::block::compress_prepend_size(&[3u8; 32]);
-        let config = CompressionConfig {
-            max_decompressed_payload_size: 8,
+        let mut output = Vec::new();
+        let compressed = CompressionScratch::compress_lz4(
+            &[3u8; 32],
+            &mut output,
+            &mut lz4_flex::block::CompressTable::default(),
+        )
+        .unwrap();
+        let limited = |max_decompressed_payload_size| CompressionConfig {
+            max_decompressed_payload_size,
             ..CompressionConfig::LZ4
         };
 
-        let err = decompress_payload(&compressed, config).unwrap_err();
-
+        assert_eq!(
+            decompress_payload(compressed, limited(32)).unwrap(),
+            vec![3u8; 32]
+        );
         assert!(matches!(
-            err,
+            decompress_payload(compressed, limited(31)).unwrap_err(),
             PacketError::DecompressedPayloadTooLarge {
                 actual: 32,
-                limit: 8
+                limit: 31
             }
         ));
     }

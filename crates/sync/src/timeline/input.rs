@@ -744,10 +744,11 @@ mod tests {
         app.update();
         assert_eq!(app.world().resource::<SyncedParamRuns>().0, 0);
 
-        let mut sync = app.world_mut().resource_mut::<LocalTimelineSync>();
-        sync.input_delay_ticks = 3;
-        sync.set_synced(true);
-        drop(sync);
+        {
+            let mut sync = app.world_mut().resource_mut::<LocalTimelineSync>();
+            sync.input_delay_ticks = 3;
+            sync.set_synced(true);
+        }
 
         app.update();
         assert_eq!(app.world().resource::<SyncedParamRuns>().0, 1);
@@ -802,8 +803,10 @@ mod tests {
         config.sync.jitter_margin = 1.0;
         config.sync.error_margin = 0.75;
 
-        let mut timeline = LocalTimelineSync::default();
-        timeline.input_delay_ticks = 2;
+        let timeline = LocalTimelineSync {
+            input_delay_ticks: 2,
+            ..Default::default()
+        };
 
         let objective = timeline.sync_objective(&remote, &config, &ping_manager, tick_duration);
 
@@ -841,8 +844,10 @@ mod tests {
             "test premise: error_margin is at least 1 tick"
         );
 
-        let mut timeline = LocalTimelineSync::default();
-        timeline.input_delay_ticks = 2;
+        let timeline = LocalTimelineSync {
+            input_delay_ticks: 2,
+            ..Default::default()
+        };
         let objective = timeline.sync_objective(&remote, &config, &ping_manager, tick_duration);
 
         // Controller may legitimately let `local - objective` reach
