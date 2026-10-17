@@ -83,7 +83,7 @@ impl RollbackPolicy {
 ///
 /// [`PredictionPlugin`](crate::prelude::PredictionPlugin) installs the prediction systems, but
 /// those systems only run when this resource is present and the cached network topology is a
-/// conventional client or P2P session. Insert one manager into the application when it should
+/// client. Insert one manager into the application when it should
 /// create predicted entities, record prediction history, and perform one global
 /// rollback/reconciliation pipeline.
 #[derive(Resource, Debug, Reflect)]

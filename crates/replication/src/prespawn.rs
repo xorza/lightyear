@@ -21,7 +21,6 @@ use core::any::TypeId;
 use core::hash::{Hash, Hasher};
 use lightyear_connection::client::{Client, Connected};
 use lightyear_connection::host::HostClient;
-use lightyear_connection::p2p::P2P;
 use lightyear_core::prelude::{LocalTimeline, Tick};
 #[cfg(feature = "client")]
 use lightyear_core::timeline::LocalTimelineShift;
@@ -79,7 +78,6 @@ impl PreSpawnedPlugin {
                 With<Connected>,
                 With<ReplicationReceiver>,
                 Without<HostClient>,
-                Without<P2P>,
             ),
         >,
         mut receiver: ResMut<PreSpawnedReceiver>,
@@ -96,11 +94,9 @@ impl PreSpawnedPlugin {
             .hash
             .expect("prespawn hash should have been calculated by a hook");
 
-        // Only conventional receiver-side prespawns need timeout and rollback
-        // bookkeeping. PreSpawnedPlugin also runs in authoritative server worlds,
-        // where tracking these entities would incorrectly expire them after the
-        // client timeout. Direct P2P uses PreSpawned as a permanent stable input
-        // identity and has no authoritative entity stream to match against.
+        // Only receiver-side prespawns need timeout and rollback bookkeeping.
+        // PreSpawnedPlugin also runs in authoritative server worlds, where tracking
+        // these entities would incorrectly expire them after the client timeout.
         if !connected_receivers.is_empty() {
             receiver.register_unmatched_entity(tick, entity);
         }
@@ -214,13 +210,6 @@ pub struct PreSpawned {
     /// This is primarily sender-side configuration. It scopes only Replicon's
     /// signature mapping; replication visibility is still controlled separately.
     pub client: Option<Entity>,
-
-    /// Receiver link that owns this remote entity's P2P input stream.
-    ///
-    /// Direct P2P input uses this to accept a stable input-target hash only
-    /// from the link for that peer. This does not select lifecycle state;
-    /// [`PreSpawnedReceiver`] is application-global.
-    pub receiver: Option<Entity>,
 }
 
 impl PreSpawned {
@@ -230,7 +219,6 @@ impl PreSpawned {
             hash: Some(hash),
             user_salt: None,
             client: None,
-            receiver: None,
         }
     }
     /// Uses default hasher with additional `salt`.
@@ -239,7 +227,6 @@ impl PreSpawned {
             hash: None,
             user_salt: Some(salt),
             client: None,
-            receiver: None,
         }
     }
 
@@ -251,13 +238,6 @@ impl PreSpawned {
     #[must_use]
     pub fn for_client(mut self, client: Entity) -> Self {
         self.client = Some(client);
-        self
-    }
-
-    /// Associates this stable input target with its receiving P2P link.
-    #[must_use]
-    pub fn for_receiver(mut self, receiver: Entity) -> Self {
-        self.receiver = Some(receiver);
         self
     }
 }
@@ -503,7 +483,7 @@ mod tests {
     }
 
     #[test]
-    fn conventional_client_prespawns_are_lifecycle_tracked() {
+    fn client_prespawns_are_lifecycle_tracked() {
         let mut app = test_app();
         app.world_mut().spawn((
             Client,
@@ -522,15 +502,11 @@ mod tests {
         );
     }
 
+    /// A world with no connected client receiver, as an authoritative server, gives a prespawn
+    /// its signature but no timeout bookkeeping.
     #[test]
-    fn p2p_stable_input_targets_are_not_lifecycle_tracked() {
+    fn prespawns_without_a_client_receiver_are_not_lifecycle_tracked() {
         let mut app = test_app();
-        app.world_mut().spawn((
-            P2P::Inactive,
-            RemoteId(PeerId::Local(1)),
-            Connected,
-            ReplicationReceiver,
-        ));
         let prespawned = app.world_mut().spawn(PreSpawned::new(1)).id();
         app.update();
 

@@ -135,9 +135,9 @@ impl PingPlugin {
     /// On connection, reset the PingManager and restore its typed receivers.
     ///
     /// Disconnection cleanup removes typed receivers so stale messages cannot cross connection
-    /// epochs. They are normally recreated lazily by inbound traffic, but two symmetric raw P2P
-    /// clients would otherwise both wait for the other side to send the first ping. Restoring the
-    /// two protocol-internal receivers here lets either side initiate synchronization.
+    /// epochs. They are normally recreated lazily by inbound traffic, but two ends that each wait
+    /// for the other's first ping would never start. Restoring the two protocol-internal
+    /// receivers here lets either end initiate synchronization.
     pub(crate) fn handle_connect(
         trigger: On<Add, Connected>,
         mut query: Query<&mut PingManager>,

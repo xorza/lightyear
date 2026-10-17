@@ -1,10 +1,7 @@
 use crate::network_topology::NetworkingMetadata;
 use bevy_ecs::system::Res;
 
-/// Returns true for a connected conventional client topology.
-///
-/// Direct peers are reported by [`is_p2p`], not as conventional clients, even though every
-/// [`crate::p2p::P2P`] Link carries the internal [`crate::client::Client`] role marker.
+/// Returns true for a connected client topology.
 pub fn is_client(metadata: Res<NetworkingMetadata>) -> bool {
     metadata.mode.is_client()
 }
@@ -25,9 +22,4 @@ pub fn is_headless_server(metadata: Res<NetworkingMetadata>) -> bool {
 /// We are in host-server mode when both sides form a ready cached host-client topology.
 pub fn is_host_server(metadata: Res<NetworkingMetadata>) -> bool {
     metadata.mode.is_host_server()
-}
-
-/// Returns true after the P2PStarted event has been triggered
-pub fn is_p2p(metadata: Res<NetworkingMetadata>) -> bool {
-    metadata.mode.is_p2p()
 }

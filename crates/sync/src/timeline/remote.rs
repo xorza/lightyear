@@ -278,10 +278,6 @@ impl SyncTargetTimeline for RemoteTimeline {
         self.now + self.offset
     }
 
-    fn is_initialized(&self) -> bool {
-        self.last_received_tick.is_some()
-    }
-
     fn received_packet(&self) -> bool {
         self.received_packet
     }

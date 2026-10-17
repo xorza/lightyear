@@ -15,7 +15,6 @@ use core::{marker::PhantomData, time::Duration};
 use lightyear_connection::client::{Client, Connected, Disconnected};
 use lightyear_connection::host::HostClient;
 use lightyear_connection::network_topology::{NetworkTopology, NetworkingMetadata};
-use lightyear_connection::p2p::P2P;
 use lightyear_core::prelude::{Rollback, TimelineSystems};
 use lightyear_core::tick::TickDuration;
 use lightyear_core::time::{TickDelta, TickInstant};
@@ -248,10 +247,10 @@ impl TimelineSync for InterpolationTimeline {
 pub struct TimelinePlugin;
 
 impl TimelinePlugin {
-    /// Reset the presentation timeline for a newly connected conventional client session.
+    /// Reset the presentation timeline for a newly connected client session.
     fn handle_connect(
         trigger: On<Add, Connected>,
-        clients: Query<(), (With<Client>, Without<P2P>)>,
+        clients: Query<(), With<Client>>,
         mut timeline: ResMut<InterpolationTimeline>,
     ) {
         if clients.contains(trigger.entity) {
@@ -263,7 +262,7 @@ impl TimelinePlugin {
     /// Mark an in-process host client's presentation timeline ready without network sampling.
     fn handle_host_client(
         trigger: On<Add, HostClient>,
-        clients: Query<(), (With<Client>, Without<P2P>)>,
+        clients: Query<(), With<Client>>,
         mut timeline: ResMut<InterpolationTimeline>,
     ) {
         if clients.contains(trigger.entity) {
@@ -271,10 +270,10 @@ impl TimelinePlugin {
         }
     }
 
-    /// Reset presentation synchronization when a conventional client disconnects.
+    /// Reset presentation synchronization when a client disconnects.
     fn handle_disconnect(
         trigger: On<Add, Disconnected>,
-        clients: Query<(), (With<Client>, Without<P2P>)>,
+        clients: Query<(), With<Client>>,
         mut timeline: ResMut<InterpolationTimeline>,
     ) {
         if clients.contains(trigger.entity) {
@@ -283,11 +282,7 @@ impl TimelinePlugin {
         }
     }
 
-    /// Cache the replication interval advertised by the remote replication source.
-    ///
-    /// A conventional client has one source, so new metadata replaces the previous value. P2P
-    /// uses the largest observed interval as a conservative delay for its single presentation
-    /// cursor.
+    /// Cache the replication interval advertised by the client's one replication source.
     fn receive_sender_metadata(
         trigger: On<RemoteEvent<SenderMetadata>>,
         tick_duration: Res<TickDuration>,
@@ -299,19 +294,8 @@ impl TimelinePlugin {
         if !metadata.peer_map.contains_key(&trigger.from) {
             return;
         }
-        let is_p2p = metadata.mode.is_p2p();
         debug!("Updating remote send interval to {:?}", duration);
-        // A single presentation cursor must be safe for every active replication source. Use the
-        // slowest advertised update interval across joined P2P peers; conventional client/server
-        // mode has only one source.
-        interpolation_timeline.context.remote_send_interval = if is_p2p {
-            core::cmp::max(
-                interpolation_timeline.context.remote_send_interval,
-                duration,
-            )
-        } else {
-            duration
-        };
+        interpolation_timeline.context.remote_send_interval = duration;
     }
 
     /// Run one interpolation synchronization sample against the selected remote source.
@@ -345,8 +329,8 @@ impl TimelinePlugin {
 
     /// Select the presentation source for the current topology and synchronize the resource.
     ///
-    /// Client/server mode follows its sole server. P2P mode selects the earliest delayed
-    /// objective, keeping the single presentation cursor behind every active replication source.
+    /// A client follows its sole server; a host client shares the server's world and is ready
+    /// at once.
     fn sync_timeline(
         tick_duration: Res<TickDuration>,
         metadata: Res<NetworkingMetadata>,
@@ -372,39 +356,6 @@ impl TimelinePlugin {
                 };
                 Self::sync_with_remote(
                     *client,
-                    &mut timeline,
-                    &config,
-                    remote,
-                    ping_manager,
-                    tick_duration.0,
-                );
-            }
-            NetworkTopology::P2P(joined) => {
-                let mut selected = None;
-                for &link in joined {
-                    let Ok((remote, ping_manager)) = remotes.get(link) else {
-                        continue;
-                    };
-                    if !remote.received_packet() {
-                        continue;
-                    }
-                    if ping_manager.latency_samples_recv() < config.sync.handshake_pings as u32 {
-                        continue;
-                    }
-                    let objective =
-                        timeline.sync_objective(remote, &config, ping_manager, tick_duration.0);
-                    if selected.is_none_or(|(_, earliest)| objective < earliest) {
-                        selected = Some((link, objective));
-                    }
-                }
-                let Some((source, _)) = selected else {
-                    return;
-                };
-                let Ok((remote, ping_manager)) = remotes.get(source) else {
-                    return;
-                };
-                Self::sync_with_remote(
-                    source,
                     &mut timeline,
                     &config,
                     remote,

@@ -521,7 +521,7 @@ pub(crate) fn expire_switch_blends(
 
 /// Registers the timeline-switch pipeline on the prediction client.
 ///
-/// All systems only run for client/P2P topologies (same gate as the rest of
+/// All systems only run for client topologies (same gate as the rest of
 /// prediction): host-servers stay authoritative and never switch.
 pub(crate) fn add_timeline_switch_systems(app: &mut App) {
     app.init_resource::<TimelineSwitchSettings>();

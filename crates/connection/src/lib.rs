@@ -34,7 +34,6 @@ pub mod shared;
 
 pub mod host;
 pub mod network_topology;
-pub mod p2p;
 pub mod raw;
 
 /// System sets for connection-related logic.
@@ -54,7 +53,7 @@ pub enum ConnectionSystems {
 pub mod prelude {
     pub use crate::ConnectionSystems;
     pub use crate::direction::NetworkDirection;
-    pub use crate::identity::{is_client, is_p2p};
+    pub use crate::identity::is_client;
     pub use crate::network_target::NetworkTarget;
     pub use crate::network_topology::{
         NetworkTopology, NetworkTopologyError, NetworkTopologySystems, NetworkingMetadata,
@@ -64,7 +63,6 @@ pub mod prelude {
         Client, ClientState, Connect, Connected, Connecting, ConnectionError, Disconnect,
         Disconnected, DisconnectedReason,
     };
-    pub use crate::p2p::P2P;
 
     #[cfg(feature = "client")]
     pub mod client {

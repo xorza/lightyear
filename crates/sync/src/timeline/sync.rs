@@ -10,26 +10,11 @@ use core::time::Duration;
 use lightyear_connection::client::{Client, Connected, Disconnected};
 use lightyear_connection::host::HostClient;
 use lightyear_connection::network_topology::{NetworkTopology, NetworkingMetadata};
-use lightyear_connection::p2p::P2P;
 use lightyear_core::prelude::LocalTimeline;
 use lightyear_core::tick::TickDuration;
 use lightyear_core::time::TickInstant;
 use lightyear_core::timeline::{LocalTimelineShift, NetworkTimeline};
-use tracing::{error, trace};
-
-/// Triggered when a running P2P timeline is too far ahead to correct with bounded pacing.
-///
-/// A running deterministic peer cannot safely emit a local [`LocalTimelineShift`], because other
-/// peers would retain inputs under the old tick labels. The P2P session owner should treat this
-/// event as fatal and abort the session, unless it implements a coordinated all-peer
-/// resynchronization protocol.
-#[derive(Event, Debug, Clone, Copy)]
-pub struct P2PTimelineDiverged {
-    /// P2P Link whose remote estimate produced the worst local lead.
-    pub limiting_link: Entity,
-    /// Local lead over the limiting Link, measured in fractional ticks.
-    pub lead: f32,
-}
+use tracing::trace;
 
 /// Runtime controller for synchronizing a local clock or cursor to a remote timeline.
 ///
@@ -114,9 +99,7 @@ pub trait TimelineSync {
     /// Apply the common speed controller for an error measured in fractional ticks.
     ///
     /// Implementations apply speed changes and recovery toward `1.0`. A
-    /// [`SyncAdjustment::Resync`] result is left to the synchronization policy: conventional
-    /// client/server synchronization may snap, while a running P2P session must abort or perform
-    /// a coordinated recovery instead.
+    /// [`SyncAdjustment::Resync`] result is left to the synchronization policy.
     fn speed_adjustment(&mut self, config: &Self::Config, offset: f32) -> SyncAdjustment {
         let adjustment = self
             .sync_context()
@@ -153,11 +136,6 @@ pub trait TimelineSync {
 
 pub trait SyncTargetTimeline: NetworkTimeline + Default {
     fn current_estimate(&self) -> TickInstant;
-
-    /// Returns true after this timeline has received enough information to estimate remote time.
-    fn is_initialized(&self) -> bool {
-        true
-    }
 
     /// Returns true if the SyncTimelines are allowed to use this timeline as a sync target this frame
     fn received_packet(&self) -> bool;
@@ -326,13 +304,10 @@ impl<Remote: SyncTargetTimeline> LocalTimelineSyncPlugin<Remote> {
         virtual_time.set_relative_speed(sync.relative_speed());
     }
 
-    /// Reset synchronization controller state when a conventional client session connects.
-    ///
-    /// P2P links are handled as a topology-wide set by [`Self::sync_timelines`], so an individual
-    /// P2P link connecting must not reset an already-running deterministic session.
+    /// Reset synchronization controller state when a client session connects.
     fn handle_connect(
         trigger: On<Add, Connected>,
-        clients: Query<(), (With<Client>, Without<P2P>)>,
+        clients: Query<(), With<Client>>,
         mut sync: ResMut<LocalTimelineSync>,
     ) {
         if clients.get(trigger.entity).is_ok() {
@@ -346,7 +321,7 @@ impl<Remote: SyncTargetTimeline> LocalTimelineSyncPlugin<Remote> {
     /// or a remote-clock correction before local input systems can run.
     fn handle_host_client(
         trigger: On<Add, HostClient>,
-        clients: Query<(), (With<Client>, Without<P2P>)>,
+        clients: Query<(), With<Client>>,
         mut sync: ResMut<LocalTimelineSync>,
     ) {
         if clients.get(trigger.entity).is_ok() {
@@ -354,13 +329,10 @@ impl<Remote: SyncTargetTimeline> LocalTimelineSyncPlugin<Remote> {
         }
     }
 
-    /// Clear conventional client readiness when its session disconnects.
-    ///
-    /// P2P readiness follows [`NetworkingMetadata`] so that one link's lifecycle cannot
-    /// independently relabel or pause the world clock.
+    /// Clear client readiness when its session disconnects.
     fn handle_disconnect(
         trigger: On<Add, Disconnected>,
-        clients: Query<(), (With<Client>, Without<P2P>)>,
+        clients: Query<(), With<Client>>,
         mut sync: ResMut<LocalTimelineSync>,
     ) {
         if clients.get(trigger.entity).is_ok() {
@@ -377,16 +349,10 @@ impl<Remote: SyncTargetTimeline> LocalTimelineSyncPlugin<Remote> {
         prediction_window_wait: Res<PredictionWindowWait>,
         local_timeline: Res<LocalTimeline>,
         sync: Res<LocalTimelineSync>,
-        p2p_links: Query<&P2P>,
         mut virtual_time: ResMut<Time<Virtual>>,
     ) {
         let is_synced = sync.is_synced();
-        let p2p_timeline =
-            metadata.mode.is_p2p() || p2p_links.iter().any(|state| *state == P2P::Candidate);
-        if is_synced
-            && prediction_window_wait.is_waiting()
-            && (metadata.mode.is_client() || p2p_timeline)
-        {
+        if is_synced && prediction_window_wait.is_waiting() && metadata.mode.is_client() {
             virtual_time.set_relative_speed(0.0);
             trace!(
                 target: "lightyear_debug::sync",
@@ -399,12 +365,11 @@ impl<Remote: SyncTargetTimeline> LocalTimelineSyncPlugin<Remote> {
                 desired_relative_speed = sync.relative_speed(),
                 "paused virtual time at the deterministic prediction-window limit"
             );
-        } else if p2p_timeline
-            || (is_synced
-                && matches!(
-                    metadata.mode,
-                    NetworkTopology::Client(_) | NetworkTopology::HostClient { .. }
-                ))
+        } else if is_synced
+            && matches!(
+                metadata.mode,
+                NetworkTopology::Client(_) | NetworkTopology::HostClient { .. }
+            )
         {
             Self::apply_relative_speed(&sync, &local_timeline, &mut virtual_time);
         } else {
@@ -474,110 +439,10 @@ impl<Remote: SyncTargetTimeline> LocalTimelineSyncPlugin<Remote> {
         }
     }
 
-    /// Synchronize against a candidate barrier cohort or an active joined cohort.
-    fn sync_p2p_peers(
-        synchronization_peers: impl Iterator<Item = Entity>,
-        local_now: TickInstant,
-        is_synced: bool,
-        sync: &mut LocalTimelineSync,
-        config: &InputTimelineConfig,
-        remotes: &Query<
-            (&Remote, &PingManager),
-            (With<Client>, With<Connected>, Without<HostClient>),
-        >,
-        commands: &mut Commands,
-    ) {
-        let mut found_any = false;
-        let mut all_initialized = true;
-        let mut sampled_any = false;
-        let mut limiting = None;
-        for link_entity in synchronization_peers {
-            found_any = true;
-            let Ok((remote, _ping_manager)) = remotes.get(link_entity) else {
-                all_initialized = false;
-                continue;
-            };
-            if !remote.is_initialized() {
-                all_initialized = false;
-                continue;
-            }
-            sampled_any |= remote.received_packet();
-            let remote_estimate = remote.current_estimate();
-            let lead = (local_now - remote_estimate).to_f32();
-            if limiting.is_none_or(|(_, worst, _)| lead > worst) {
-                limiting = Some((link_entity, lead, remote_estimate));
-            }
-        }
-        all_initialized &= found_any;
-
-        if !is_synced {
-            if !all_initialized || !sampled_any {
-                return;
-            }
-            let Some((limiting_link, worst_lead, remote_estimate)) = limiting else {
-                return;
-            };
-            let objective = if worst_lead > 0.0 {
-                remote_estimate
-            } else {
-                local_now
-            };
-            let tick_delta = sync.resync(local_now, objective);
-            sync.set_synced(true);
-            sync.set_relative_speed(1.0);
-            commands.trigger(LocalTimelineShift { delta: tick_delta });
-            trace!(
-                target: "lightyear_debug::sync",
-                kind = "p2p_initial_sync",
-                schedule = "PostUpdate",
-                sample_point = "PostUpdate",
-                ?limiting_link,
-                worst_lead,
-                ?objective,
-                tick_delta,
-                "initial P2P timeline aligned before input capture became ready"
-            );
-            return;
-        }
-
-        if !sampled_any {
-            return;
-        }
-        let Some((limiting_link, worst_lead, _)) = limiting else {
-            return;
-        };
-        let adjustment = sync.speed_adjustment(config, worst_lead.max(0.0));
-        if matches!(adjustment, SyncAdjustment::Resync) {
-            sync.set_relative_speed(1.0);
-            commands.trigger(P2PTimelineDiverged {
-                limiting_link,
-                lead: worst_lead,
-            });
-            error!(
-                ?limiting_link,
-                worst_lead,
-                "running P2P timeline diverged beyond bounded pacing; abort the session"
-            );
-            return;
-        }
-        trace!(
-            target: "lightyear_debug::sync",
-            kind = "p2p_sync_aggregate",
-            schedule = "PostUpdate",
-            sample_point = "PostUpdate",
-            ?limiting_link,
-            worst_lead,
-            relative_speed = sync.relative_speed(),
-            "applied one aggregate P2P pacing decision"
-        );
-    }
-
     /// Select the topology's clock source and update [`LocalTimelineSync`].
     ///
-    /// Client/server mode follows its sole authoritative server. P2P mode performs one initial
-    /// alignment after every declared link is ready, then feeds the worst local lead into the
-    /// shared speed controller without applying unsafe mid-session tick shifts. Deterministic
-    /// gameplay start readiness belongs to the P2P session layer.
+    /// A client follows its sole authoritative server; a host client shares the server's clock
+    /// and is synchronized at once.
     fn sync_timelines(
         tick_duration: Res<TickDuration>,
         fixed_time: Res<Time<Fixed>>,
@@ -589,37 +454,15 @@ impl<Remote: SyncTargetTimeline> LocalTimelineSyncPlugin<Remote> {
             (&Remote, &PingManager),
             (With<Client>, With<Connected>, Without<HostClient>),
         >,
-        p2p_links: Query<(Entity, Ref<P2P>)>,
         mut commands: Commands,
     ) {
         let mut is_synced = sync.is_synced();
         let local_now = local_timeline.instant(&fixed_time);
-        let has_candidates = p2p_links.iter().any(|(_, state)| *state == P2P::Candidate);
-        let candidates_changed = p2p_links
-            .iter()
-            .any(|(_, state)| *state == P2P::Candidate && state.is_changed());
 
-        if metadata.is_changed() || candidates_changed {
-            let preserve_running_p2p =
-                is_synced && matches!(&metadata.mode, NetworkTopology::P2P(_));
+        if metadata.is_changed() {
             sync.reset();
-            sync.set_synced(preserve_running_p2p);
-            is_synced = preserve_running_p2p;
-        }
-
-        if has_candidates {
-            Self::sync_p2p_peers(
-                p2p_links
-                    .iter()
-                    .filter_map(|(entity, state)| (*state == P2P::Candidate).then_some(entity)),
-                local_now,
-                is_synced,
-                &mut sync,
-                &config,
-                &remotes,
-                &mut commands,
-            );
-            return;
+            sync.set_synced(false);
+            is_synced = false;
         }
 
         match &metadata.mode {
@@ -638,15 +481,6 @@ impl<Remote: SyncTargetTimeline> LocalTimelineSyncPlugin<Remote> {
                     &mut commands,
                 );
             }
-            NetworkTopology::P2P(synchronization_peers) => Self::sync_p2p_peers(
-                synchronization_peers.iter().copied(),
-                local_now,
-                is_synced,
-                &mut sync,
-                &config,
-                &remotes,
-                &mut commands,
-            ),
             NetworkTopology::HostClient { .. } if !is_synced => {
                 sync.set_synced(true);
             }
@@ -694,10 +528,10 @@ impl<Remote: SyncTargetTimeline> Plugin for LocalTimelineSyncPlugin<Remote> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::timeline::input::{InputTimelineConfig, LocalTimelineSync};
-    use bevy_app::{FixedUpdate, PostUpdate};
+    use crate::timeline::input::LocalTimelineSync;
+    use bevy_app::FixedUpdate;
     use bevy_time::TimeUpdateStrategy;
-    use lightyear_core::id::{PeerId, RemoteId};
+
     use lightyear_core::plugin::CorePlugins;
     use lightyear_core::tick::Tick;
     use lightyear_core::time::{Overstep, TickDelta};
@@ -710,18 +544,7 @@ mod tests {
     struct TestRemote {
         now: TickInstant,
         estimate: TickInstant,
-        initialized: bool,
         received_packet: bool,
-    }
-
-    #[derive(Resource, Default)]
-    struct RecordedDivergences(Vec<P2PTimelineDiverged>);
-
-    fn record_divergence(
-        trigger: On<P2PTimelineDiverged>,
-        mut divergences: ResMut<RecordedDivergences>,
-    ) {
-        divergences.0.push(*trigger);
     }
 
     #[derive(Resource, Default)]
@@ -743,11 +566,14 @@ mod tests {
         app.init_resource::<NetworkingMetadata>();
         app.init_resource::<FixedRuns>();
         app.add_systems(FixedUpdate, count_fixed_runs);
+        // The client's server link is absent, so nothing samples a remote clock; the topology
+        // change resets synchronization in the first frame, before readiness is set.
+        app.world_mut().resource_mut::<NetworkingMetadata>().mode =
+            NetworkTopology::Client(Entity::PLACEHOLDER);
+        app.update();
         app.world_mut()
             .resource_mut::<LocalTimelineSync>()
             .set_synced(true);
-        app.world_mut().resource_mut::<NetworkingMetadata>().mode =
-            NetworkTopology::P2P([Entity::PLACEHOLDER].into_iter().collect());
         {
             let mut wait = app.world_mut().resource_mut::<PredictionWindowWait>();
             wait.update(Tick(0), None, 1);
@@ -773,34 +599,6 @@ mod tests {
         assert_eq!(app.world().resource::<FixedRuns>().0, before_wait);
         app.update();
         assert!(app.world().resource::<FixedRuns>().0 > before_wait);
-    }
-
-    #[test]
-    fn prediction_window_wait_also_pauses_during_p2p_candidate_sync() {
-        let mut app = App::new();
-        app.add_plugins((
-            CorePlugins {
-                tick_duration: Duration::from_millis(10),
-            },
-            LocalTimelineSyncPlugin::<TestRemote>::default(),
-        ));
-        app.init_resource::<NetworkingMetadata>();
-        app.world_mut().spawn(P2P::Candidate);
-        app.world_mut()
-            .resource_mut::<LocalTimelineSync>()
-            .set_synced(true);
-        {
-            let mut wait = app.world_mut().resource_mut::<PredictionWindowWait>();
-            wait.update(Tick(0), None, 1);
-            wait.update(Tick(1), None, 1);
-        }
-
-        app.world_mut().run_schedule(Last);
-
-        assert_eq!(
-            app.world().resource::<Time<Virtual>>().relative_speed(),
-            0.0
-        );
     }
 
     impl TimelineConfig for TestRemoteConfig {
@@ -837,269 +635,8 @@ mod tests {
             self.estimate
         }
 
-        fn is_initialized(&self) -> bool {
-            self.initialized
-        }
-
         fn received_packet(&self) -> bool {
             self.received_packet
         }
-    }
-
-    #[test]
-    fn resource_pipeline_initializes_then_paces_from_the_worst_p2p_lead() {
-        let mut app = App::new();
-        app.add_plugins((
-            CorePlugins {
-                tick_duration: Duration::from_millis(10),
-            },
-            LocalTimelineSyncPlugin::<TestRemote>::default(),
-        ));
-        app.init_resource::<NetworkingMetadata>();
-        app.init_resource::<RecordedDivergences>();
-        app.add_observer(record_divergence);
-        app.update();
-
-        app.insert_resource(InputTimelineConfig::default().with_sync_config(SyncConfig {
-            handshake_pings: 0,
-            error_margin: 2.0,
-            max_error_margin: 10.0,
-            consecutive_errors_threshold: 1,
-            ..Default::default()
-        }));
-        app.world_mut()
-            .resource_mut::<LocalTimeline>()
-            .apply_delta(100);
-        let local_now = TickInstant::from(app.world().resource::<LocalTimeline>().tick());
-
-        let mut links = Vec::new();
-        // The middle Link has the slowest observed execution phase. Declare the final Link without
-        // connecting it first to verify that the first connection cannot start input capture while
-        // a member of the fixed roster is still joining.
-        for (peer, lead) in [(1, 1), (2, 4), (3, 0)] {
-            let estimate = local_now - TickDelta::from_i32(lead);
-            let entity = app
-                .world_mut()
-                .spawn((
-                    P2P::Candidate,
-                    RemoteId(PeerId::Local(peer)),
-                    TestRemote {
-                        now: estimate,
-                        estimate,
-                        initialized: peer != 3,
-                        received_packet: true,
-                    },
-                    PingManager::default(),
-                ))
-                .id();
-            if peer != 3 {
-                app.world_mut().entity_mut(entity).insert(Connected);
-            }
-            links.push(entity);
-        }
-        app.world_mut().run_schedule(PostUpdate);
-
-        assert_eq!(
-            app.world().resource::<LocalTimeline>().tick(),
-            local_now.tick()
-        );
-        assert_eq!(
-            app.world().resource::<LocalTimelineSync>().relative_speed(),
-            1.0
-        );
-        assert!(
-            !app.world().resource::<LocalTimelineSync>().is_synced(),
-            "input capture must remain gated until every declared P2P Link is connected"
-        );
-
-        // Connecting the final Link is still not enough until its remote timeline has initialized.
-        app.world_mut().entity_mut(links[2]).insert(Connected);
-        app.world_mut().run_schedule(PostUpdate);
-        assert!(!app.world().resource::<LocalTimelineSync>().is_synced());
-
-        // Once every current Link has initialized, align the local timeline to the slowest
-        // observed phase and only then expose synchronized input scheduling.
-        app.world_mut()
-            .entity_mut(links[2])
-            .get_mut::<TestRemote>()
-            .unwrap()
-            .initialized = true;
-        app.world_mut().run_schedule(PostUpdate);
-
-        let initial_objective = local_now - TickDelta::from_i32(4);
-        assert_eq!(
-            app.world().resource::<LocalTimeline>().tick(),
-            initial_objective.tick()
-        );
-        assert_eq!(
-            app.world().resource::<LocalTimelineSync>().relative_speed(),
-            1.0
-        );
-        assert!(
-            app.world().resource::<LocalTimelineSync>().is_synced(),
-            "readiness is exposed only after initial P2P alignment"
-        );
-
-        // The session barrier can now complete. Gameplay-facing systems, including the
-        // prediction-window wait, only become active once the topology transitions out of its
-        // starting phase.
-        for &link in &links {
-            app.world_mut().entity_mut(link).insert(P2P::Joined);
-        }
-        app.world_mut().resource_mut::<NetworkingMetadata>().mode =
-            NetworkTopology::P2P(links.iter().copied().collect());
-
-        // After readiness, only the middle Link exceeds the controller deadband. A correct
-        // maximum aggregate must therefore slow the app, independent of the controller's exact
-        // speed formula.
-        for (&link, lead) in links.iter().zip([1, 4, 0]) {
-            let mut link = app.world_mut().entity_mut(link);
-            let mut remote = link.get_mut::<TestRemote>().unwrap();
-            remote.estimate = initial_objective - TickDelta::from_i32(lead);
-            remote.received_packet = true;
-        }
-        app.world_mut().run_schedule(PostUpdate);
-
-        let slowed_speed = app.world().resource::<LocalTimelineSync>().relative_speed();
-        assert!(
-            slowed_speed < 1.0,
-            "the maximum four-tick lead must cross the two-tick deadband"
-        );
-        assert_eq!(
-            app.world().resource::<LocalTimeline>().tick(),
-            initial_objective.tick()
-        );
-        assert!(app.world().resource::<LocalTimelineSync>().is_synced());
-
-        // Prediction-window exhaustion is a hard wait layered over the phase controller. It
-        // pauses virtual time without overwriting the slowdown that should be restored on resume.
-        {
-            let mut wait = app.world_mut().resource_mut::<PredictionWindowWait>();
-            wait.update(Tick(0), None, 4);
-            wait.update(Tick(4), None, 4);
-        }
-        app.world_mut().run_schedule(Last);
-        assert_eq!(
-            app.world().resource::<Time<Virtual>>().relative_speed(),
-            0.0
-        );
-        assert_eq!(
-            app.world().resource::<LocalTimelineSync>().relative_speed(),
-            slowed_speed,
-            "hard waiting must preserve the phase controller's desired speed"
-        );
-
-        {
-            let mut wait = app.world_mut().resource_mut::<PredictionWindowWait>();
-            wait.update(Tick(4), Some(Tick(2)), 4);
-        }
-        app.world_mut().run_schedule(Last);
-        assert_eq!(
-            app.world().resource::<Time<Virtual>>().relative_speed(),
-            slowed_speed,
-            "recovering two confirmed ticks must resume at the phase-controller speed"
-        );
-
-        // Render frames without a new network observation must preserve both the controller state
-        // and its current correction. Recovery is driven by later fresh observations.
-        {
-            let world = app.world_mut();
-            let mut query = world.query::<&mut TestRemote>();
-            query
-                .iter_mut(world)
-                .for_each(|mut remote| remote.received_packet = false);
-        }
-        app.world_mut().run_schedule(PostUpdate);
-        assert_eq!(
-            app.world().resource::<LocalTimelineSync>().relative_speed(),
-            slowed_speed,
-            "a frame without a fresh observation must not alter P2P pacing"
-        );
-
-        // Exclude the four-tick Link and provide a fresh observation on the remaining Links. Their
-        // maximum lead is one tick, inside the deadband, so the controller begins recovering.
-        app.world_mut()
-            .entity_mut(links[1])
-            .get_mut::<TestRemote>()
-            .unwrap()
-            .initialized = false;
-        {
-            let world = app.world_mut();
-            let mut query = world.query::<&mut TestRemote>();
-            query
-                .iter_mut(world)
-                .for_each(|mut remote| remote.received_packet = true);
-        }
-        app.world_mut().run_schedule(PostUpdate);
-
-        let local_sync = app.world().resource::<LocalTimelineSync>();
-        let recovering_speed = local_sync.relative_speed();
-        assert!(
-            recovering_speed > slowed_speed && recovering_speed <= 1.0,
-            "excluding the only lead outside the deadband must start speed recovery"
-        );
-        assert!(app.world().resource::<LocalTimelineSync>().is_synced());
-
-        // Losing every usable estimate without a topology change is still not a new observation;
-        // keep the last correction until timing resumes or the topology itself changes.
-        {
-            let world = app.world_mut();
-            let mut query = world.query::<&mut TestRemote>();
-            query.iter_mut(world).for_each(|mut remote| {
-                remote.initialized = false;
-                remote.received_packet = false;
-            });
-        }
-        app.world_mut().run_schedule(PostUpdate);
-        assert_eq!(
-            app.world().resource::<LocalTimelineSync>().relative_speed(),
-            recovering_speed,
-            "missing observations must preserve controller hysteresis"
-        );
-        assert!(app.world().resource::<LocalTimelineSync>().is_synced());
-
-        // Once input capture is active, a resync-sized gap is unsafe to apply locally. Report the
-        // limiting Link to the session owner and leave all tick labels unchanged.
-        {
-            let mut link = app.world_mut().entity_mut(links[0]);
-            let mut remote = link.get_mut::<TestRemote>().unwrap();
-            remote.initialized = true;
-            remote.received_packet = true;
-            remote.estimate = initial_objective - TickDelta::from_i32(20);
-        }
-        app.world_mut().run_schedule(PostUpdate);
-        assert_eq!(
-            app.world().resource::<LocalTimelineSync>().relative_speed(),
-            1.0
-        );
-        assert_eq!(
-            app.world().resource::<LocalTimeline>().tick(),
-            initial_objective.tick(),
-            "a running P2P session must not relabel local ticks"
-        );
-        assert!(app.world().resource::<LocalTimelineSync>().is_synced());
-        let divergences = &app.world().resource::<RecordedDivergences>().0;
-        assert_eq!(divergences.len(), 1);
-        assert_eq!(divergences[0].limiting_link, links[0]);
-        assert_eq!(divergences[0].lead, 20.0);
-
-        // Once every joined Link disconnects, the cached topology leaves P2P mode and timeline
-        // readiness is revoked. Application time itself returns to normal speed.
-        for &link in &links {
-            app.world_mut().entity_mut(link).remove::<Connected>();
-        }
-        app.world_mut().resource_mut::<NetworkingMetadata>().mode = NetworkTopology::Undefined;
-        app.world_mut().run_schedule(PostUpdate);
-
-        let local_sync = app.world().resource::<LocalTimelineSync>();
-        assert_eq!(local_sync.relative_speed(), 1.0);
-        assert!(!local_sync.is_synced());
-
-        app.world_mut().run_schedule(Last);
-        assert_eq!(
-            app.world().resource::<Time<Virtual>>().relative_speed(),
-            1.0,
-            "leaving P2P topology must restore normal application time"
-        );
     }
 }

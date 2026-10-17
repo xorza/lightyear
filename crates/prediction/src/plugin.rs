@@ -21,7 +21,7 @@ use bevy_ecs::prelude::*;
 use bevy_replicon::prelude::AppMarkerExt;
 use bevy_replicon::shared::replication::diff::Diffable as RepliconDiffable;
 use bevy_replicon::shared::replication::receive_markers::MarkerConfig;
-use lightyear_connection::network_topology::{NetworkTopology, NetworkingMetadata};
+use lightyear_connection::network_topology::NetworkingMetadata;
 use lightyear_core::prelude::{ConfirmedHistory, is_in_rollback};
 use lightyear_replication::prelude::{PreSpawned, PredictedSend, ReplicationSystems};
 #[cfg(test)]
@@ -30,9 +30,7 @@ use lightyear_replication::prespawn::PreSpawnedReceiver;
 /// Plugin that installs client-side prediction systems.
 ///
 /// The systems run when the application contains a [`PredictionManager`] resource and its cached
-/// network topology is a conventional client or active P2P session. P2P candidates do not run the
-/// pipeline: deterministic play and its rollback history begin at the agreed session start tick.
-/// Prediction-history writers also require a synchronized timeline and therefore never record
+/// network topology is a client. Prediction-history writers also require a synchronized timeline and therefore never record
 /// values under pre-sync tick labels. Insert a [`PredictionManager`] resource to opt the
 /// application into one global prediction and rollback pipeline. Host-client and server
 /// topologies remain authoritative and do not run it.
@@ -117,11 +115,7 @@ pub(crate) fn should_run(
     manager: Option<Res<PredictionManager>>,
     metadata: Res<NetworkingMetadata>,
 ) -> bool {
-    manager.is_some()
-        && matches!(
-            metadata.mode,
-            NetworkTopology::Client(_) | NetworkTopology::P2P(_)
-        )
+    manager.is_some() && metadata.mode.is_client()
 }
 
 /// Enable rollbacking a component even if the component is not networked
@@ -297,7 +291,7 @@ impl Plugin for PredictionPlugin {
 mod tests {
     use super::*;
     use bevy_ecs::system::RunSystemOnce;
-    use lightyear_connection::p2p::P2P;
+    use lightyear_connection::network_topology::NetworkTopology;
     use lightyear_core::timeline::Rollback;
 
     /// A host server adds the plugin without a `PredictionManager`, and its rollback systems still
@@ -351,14 +345,8 @@ mod tests {
         app.world_mut().resource_mut::<NetworkingMetadata>().mode = NetworkTopology::Client(client);
         assert!(app.world_mut().run_system_once(should_run).unwrap());
 
-        app.world_mut().entity_mut(client).insert(P2P::Candidate);
         app.world_mut().resource_mut::<NetworkingMetadata>().mode = NetworkTopology::Undefined;
         assert!(!app.world_mut().run_system_once(should_run).unwrap());
-
-        app.world_mut().entity_mut(client).insert(P2P::Joined);
-        app.world_mut().resource_mut::<NetworkingMetadata>().mode =
-            NetworkTopology::P2P([client].into_iter().collect());
-        assert!(app.world_mut().run_system_once(should_run).unwrap());
 
         app.world_mut().resource_mut::<NetworkingMetadata>().mode =
             NetworkTopology::HostClient { server, client };
