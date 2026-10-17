@@ -1,4 +1,5 @@
 use super::rollback::{RollbackPlugin, RollbackSystems};
+use crate::SyncComponent;
 use crate::correction::update_frame_interpolation_post_rollback;
 use crate::despawn::{PredictionDisable, finalize_local_despawns};
 use crate::diagnostics::PredictionDiagnosticsPlugin;
@@ -12,7 +13,6 @@ use crate::predicted_history::{
 };
 use crate::registry::{PredictionRegistry, register_rollback_metadata};
 use crate::rollback::DisabledDuringRollback;
-use crate::{Predicted, SyncComponent};
 use bevy_app::FixedPreUpdate;
 use bevy_app::prelude::*;
 use bevy_ecs::component::Mutable;
@@ -22,6 +22,7 @@ use bevy_replicon::prelude::AppMarkerExt;
 use bevy_replicon::shared::replication::diff::Diffable as RepliconDiffable;
 use bevy_replicon::shared::replication::receive_markers::MarkerConfig;
 use lightyear_connection::network_topology::NetworkingMetadata;
+use lightyear_core::prediction::Predicted;
 use lightyear_core::prelude::{ConfirmedHistory, is_in_rollback};
 use lightyear_replication::prelude::{PreSpawned, PredictedSend, ReplicationSystems};
 #[cfg(test)]

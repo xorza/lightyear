@@ -35,7 +35,7 @@ entities should generally have a stable component layout or an application-level
 
 Visibility only controls what happens when an entity becomes hidden. Actually despawning an
 authoritative entity still despawns every retained remote copy. To intentionally despawn only on
-the sender, remove [`Replicating`](crate::send::Replicating) before despawning the entity.
+the sender, remove [`Replicated`](bevy_replicon::prelude::Replicated) before despawning the entity.
 
 Visibility is cached, so after you set an entity as `visible` for a client, it will remain relevant
 until you change the setting again.
@@ -55,7 +55,7 @@ world.lose_visibility(entity, client);
 
 use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
-use bevy_replicon::prelude::ScopeLifetime;
+use bevy_replicon::prelude::{Replicated, ScopeLifetime};
 use bevy_replicon::server::visibility::client_visibility::ClientVisibility;
 use bevy_replicon::server::visibility::filters_mask::FilterBit;
 use bevy_replicon::server::visibility::registry::FilterRegistry;
@@ -64,7 +64,6 @@ use bevy_replicon::shared::replication::registry::ReplicationRegistry;
 use tracing::{info, trace};
 
 use crate::hierarchy::{ReplicateLike, ReplicateLikeChildren};
-use crate::send::Replicating;
 
 #[doc(hidden)]
 #[derive(Resource, Clone, Copy)]
@@ -389,10 +388,10 @@ fn reinherit_visibility_on_override_removed(
 /// Lightyear's retaining bits here lets Replicon send the authoritative despawn.
 ///
 /// If the server intentionally wants to despawn its local entity without sending a despawn to the
-/// client, it should remove [`Replicating`] before despawning, so this observer will not run for
+/// client, it should remove [`Replicated`] before despawning, so this observer will not run for
 /// that entity.
 fn clear_retained_visibility_on_despawn(
-    trigger: On<Despawn, Replicating>,
+    trigger: On<Despawn, Replicated>,
     bits: Res<VisibilityBits>,
     mut senders: Query<&mut ClientVisibility>,
 ) {

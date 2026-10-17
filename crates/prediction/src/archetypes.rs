@@ -1,4 +1,3 @@
-use crate::Predicted;
 use crate::despawn::PredictionDisable;
 use crate::registry::{
     CheckRollbackFn, PendingDiffTickFn, PredictionRegistry, PrepareRollbackFn,
@@ -17,9 +16,10 @@ use bevy_ecs::{
     system::{SystemMeta, SystemParam, SystemParamValidationError},
     world::{FromWorld, World, unsafe_world_cell::UnsafeWorldCell},
 };
+use bevy_replicon::client::confirm_history::ConfirmHistory;
 use core::marker::PhantomData;
 use lightyear_core::interpolation::Interpolated;
-use lightyear_replication::prelude::ConfirmHistory;
+use lightyear_core::prediction::Predicted;
 use lightyear_replication::registry::{ComponentKind, ComponentRegistry};
 
 /// Low-level world access paired with the shared incremental prediction-archetype cache.

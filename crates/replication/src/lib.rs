@@ -131,13 +131,6 @@ pub mod visibility;
 mod impls;
 
 pub mod prelude {
-    pub use bevy_replicon::client::confirm_history::ConfirmHistory;
-    pub use bevy_replicon::client::server_mutate_ticks::ServerMutateTicks;
-    pub use bevy_replicon::prelude::Remote;
-    pub use bevy_replicon::prelude::Remote as Replicated;
-    #[cfg(feature = "server")]
-    pub use bevy_replicon::server::{PriorityMap, ReplicatePriority};
-
     pub use crate::ReplicationSystems;
     pub use crate::checkpoint::ReplicationCheckpointMap;
     pub use crate::control::{Controlled, ControlledBy, ControlledSend, Lifetime};
@@ -147,7 +140,7 @@ pub mod prelude {
     pub use crate::metadata::{ReplicationMetadata, SenderMetadata};
     pub use crate::prespawn::PreSpawned;
     pub use crate::receive::{Persistent, ReplicationReceiver};
-    pub use crate::send::{Replicate, ReplicatedFrom, Replicating, ReplicationSender};
+    pub use crate::send::{Replicate, ReplicatedFrom, ReplicationSender};
 
     pub use crate::registry::ComponentRegistry;
     pub use crate::registry::TransformLinearInterpolation;
@@ -163,12 +156,6 @@ pub mod prelude {
     pub use crate::send::{InterpolatedSend, InterpolationTarget};
     #[cfg(feature = "prediction")]
     pub use crate::send::{PredictedSend, PredictionTarget};
-
-    #[cfg(feature = "client")]
-    pub mod client {
-        pub use bevy_replicon::prelude::Remote;
-        pub use bevy_replicon::prelude::Remote as Replicated;
-    }
 }
 
 #[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone, Copy)]

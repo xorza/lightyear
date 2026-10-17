@@ -55,7 +55,6 @@ pub mod prelude {
     pub use crate::send_trigger::EventSender;
     pub use crate::trigger::AppTriggerExt;
     pub use crate::{Message, MessageManager};
-    pub use lightyear_core::timeline::TimelineKind;
 
     #[cfg(feature = "server")]
     pub use crate::server::ServerMultiMessageSender;

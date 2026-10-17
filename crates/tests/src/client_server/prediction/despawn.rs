@@ -1,6 +1,7 @@
 use crate::protocol::{CompFull, CompSimple};
 use crate::stepper::*;
 use bevy::prelude::Component;
+use bevy_replicon::prelude::Remote;
 use bevy_replicon::shared::server_entity_map::ServerEntityMap;
 use lightyear_connection::prelude::*;
 use lightyear_core::prelude::*;
@@ -87,7 +88,7 @@ fn test_despawned_predicted_rollback() {
         stepper
             .client_app()
             .world()
-            .get::<Replicated>(predicted_entity)
+            .get::<Remote>(predicted_entity)
             .is_some()
     );
     assert!(

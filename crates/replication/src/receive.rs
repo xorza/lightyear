@@ -5,12 +5,6 @@ use bevy_reflect::Reflect;
 use bevy_replicon::client::ClientSystems;
 // TODO: add special rules so that entities with Predicted/Interpolation apply components differently
 
-/// Replicated is used as a marker component to find entities that were replicated from a remote.
-///
-/// Replicon adds [`Remote`](bevy_replicon::prelude::Remote) on entities spawned
-/// from a remote, and Lightyear keeps `Replicated` as its receiver-side name.
-pub use bevy_replicon::prelude::Remote as Replicated;
-
 /// Marker component added to a link entity to enable incoming replication.
 ///
 /// A link entity represents a connection to a remote peer. Adding

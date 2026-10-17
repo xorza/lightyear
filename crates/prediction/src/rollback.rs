@@ -28,7 +28,6 @@ We need:
 
  */
 
-use super::Predicted;
 use super::predicted_history::PredictionHistory;
 use crate::archetypes::{CachedPredictionComponent, CheckRollbackWorld, PrepareRollbackWorld};
 use crate::correction::PreviousVisual;
@@ -55,6 +54,7 @@ use bevy_utils::prelude::DebugName;
 use core::fmt::Debug;
 use lightyear_connection::network_topology::NetworkingMetadata;
 use lightyear_core::history_buffer::HistoryState;
+use lightyear_core::prediction::Predicted;
 use lightyear_core::prelude::{ConfirmedHistory, LocalTimeline};
 use lightyear_core::tick::Tick;
 use lightyear_core::timeline::{Rollback, is_in_rollback};

@@ -21,6 +21,8 @@ trace = []
 test_utils = []
 
 [dependencies]
+# expanded by `lightyear_utils::wrapping_id!`
+pastey.workspace = true
 # local crates
 lightyear_core.workspace = true
 lightyear_link.workspace = true

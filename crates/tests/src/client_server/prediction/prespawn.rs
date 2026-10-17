@@ -6,10 +6,12 @@ use bevy::prelude::{
     ChildOf, Commands, Entity, FixedUpdate, IntoScheduleConfigs, Res, Resource, With,
 };
 use bevy::utils::default;
+use bevy_replicon::prelude::Remote;
 use bevy_replicon::prelude::Signature;
 use bevy_replicon::shared::server_entity_map::ServerEntityMap;
 use lightyear_connection::network_target::NetworkTarget;
 use lightyear_core::history_buffer::HistoryState;
+use lightyear_core::prediction::Predicted;
 use lightyear_core::prelude::ConfirmedHistory;
 use lightyear_core::prelude::Tick;
 use lightyear_core::timeline::LocalTimeline;
@@ -17,12 +19,11 @@ use lightyear_core::timeline::is_in_rollback;
 use lightyear_link::Link;
 use lightyear_link::RecvLinkConditioner;
 use lightyear_link::prelude::LinkConditionerConfig;
-use lightyear_prediction::Predicted;
 use lightyear_prediction::despawn::{PredictionDespawnCommandsExt, PredictionDisable};
 use lightyear_prediction::diagnostics::PredictionMetrics;
 use lightyear_prediction::predicted_history::PredictionHistory;
 use lightyear_prediction::prelude::RollbackSystems;
-use lightyear_replication::prelude::{PreSpawned, PredictionTarget, Replicate, Replicated};
+use lightyear_replication::prelude::{PreSpawned, PredictionTarget, Replicate};
 use lightyear_replication::prespawn::PreSpawnedReceiver;
 use lightyear_sync::prelude::*;
 use test_log::test;
@@ -601,7 +602,7 @@ fn test_prespawn_client_missing() {
     let client_entity = stepper
         .client_app()
         .world_mut()
-        .query_filtered::<Entity, With<Replicated>>()
+        .query_filtered::<Entity, With<Remote>>()
         .single(stepper.client_app().world())
         .unwrap();
 

@@ -1,11 +1,12 @@
 use super::*;
 use crate::protocol::{CompA, CompCorr, CompFull};
 use bevy::prelude::{Add, Commands, Component, Entity, On, Query, With};
+use bevy_replicon::prelude::Remote;
 use bevy_replicon::shared::server_entity_map::ServerEntityMap;
 use lightyear_connection::prelude::*;
 use lightyear_core::history_buffer::HistoryState;
+use lightyear_core::prediction::Predicted;
 use lightyear_core::prelude::*;
-use lightyear_prediction::Predicted;
 use lightyear_prediction::predicted_history::PredictionHistory;
 use lightyear_replication::prelude::*;
 use test_log::test;
@@ -470,7 +471,7 @@ fn test_update_history() {
     let predicted = stepper
         .client_app()
         .world_mut()
-        .spawn((Predicted, Replicated))
+        .spawn((Predicted, Remote))
         .id();
 
     // 1. Updating Comp::Full on predicted component

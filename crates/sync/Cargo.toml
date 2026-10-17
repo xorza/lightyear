@@ -23,6 +23,8 @@ server = [
 ]
 
 [dependencies]
+# expanded by `lightyear_utils::wrapping_id!`
+pastey.workspace = true
 lightyear_utils.workspace = true
 lightyear_serde.workspace = true
 lightyear_core.workspace = true

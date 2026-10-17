@@ -36,7 +36,6 @@ pub mod prelude {
     pub use crate::entity_map::{
         ReceiveEntityMap, ReceiveMapView, RemoteEntityMap, SendEntityMap, SendMapView,
     };
-    pub use std::io::{Seek, SeekFrom};
 }
 
 use crate::writer::WriteInteger;

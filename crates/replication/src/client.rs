@@ -14,7 +14,6 @@ use lightyear_transport::prelude::Transport;
 use crate::ReplicationSystems;
 use crate::channels::RepliconChannelMap;
 use crate::checkpoint::ReplicationCheckpointMap;
-use crate::prelude::Replicated;
 use crate::receive::{Persistent, ReplicationReceiver};
 use crate::send::Replicate;
 use lightyear_messages::plugin::MessageSystems;
@@ -197,7 +196,7 @@ fn on_replication_disconnect(
             Without<HostClient>,
         ),
     >,
-    replicated: Query<Entity, (With<Replicated>, Without<Replicate>, Without<Persistent>)>,
+    replicated: Query<Entity, (With<Remote>, Without<Replicate>, Without<Persistent>)>,
     mut checkpoints: ResMut<ReplicationCheckpointMap>,
 ) {
     // The tuple observer runs when either component is removed. Only clean up a connection that

@@ -18,6 +18,8 @@ metrics = ["dep:metrics"]
 replicon = ["dep:bevy_replicon"]
 
 [dependencies]
+# expanded by `lightyear_utils::wrapping_id!`
+pastey.workspace = true
 lightyear_link = { workspace = true, optional = true }
 lightyear_utils.workspace = true
 lightyear_serde.workspace = true

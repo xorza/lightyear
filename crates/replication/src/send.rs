@@ -1,10 +1,11 @@
 //! Replication send-side: target components, visibility rules, and send scheduling.
 //!
 //! The main type here is [`Replicate`] (an alias for [`ReplicationTarget<()>`]),
-//! which selects the peers that receive an entity. Adding it also inserts the
-//! required [`Replicating`] marker. On the server you also typically add
-//! [`PredictionTarget`] and [`InterpolationTarget`] to control which clients
-//! run prediction or interpolation for that entity.
+//! which selects the peers that receive an entity. Adding it also inserts
+//! Replicon's required [`Replicated`](bevy_replicon::prelude::Replicated) marker.
+//! On the server you also typically add [`PredictionTarget`] and
+//! [`InterpolationTarget`] to control which clients run prediction or
+//! interpolation for that entity.
 //!
 //! Each link entity (the entity representing a connection to a remote peer)
 //! needs a [`ReplicationSender`] component to enable outgoing replication
@@ -16,7 +17,8 @@ use bevy_ecs::world::DeferredWorld;
 use bevy_reflect::Reflect;
 #[allow(unused_imports)]
 use bevy_replicon::prelude::{
-    AppRuleExt, AppVisibilityExt, FilterScope, ScopeLifetime, SingleComponent, VisibilityFilter,
+    AppRuleExt, AppVisibilityExt, FilterScope, Replicated, ScopeLifetime, SingleComponent,
+    VisibilityFilter,
 };
 use bevy_replicon::server::ServerSystems;
 use bevy_replicon::server::server_tick::ServerTick;
@@ -127,9 +129,11 @@ pub struct ReplicationSender;
 
 /// Selects which peers an entity is replicated to.
 ///
-/// Inserting this component also inserts the required [`Replicating`] marker. Removing it changes
-/// the entity's visibility and can despawn its remote copies; remove [`Replicating`] instead to
-/// pause replication without despawning them.
+/// Inserting this component also inserts Replicon's required
+/// [`Replicated`](bevy_replicon::prelude::Replicated) marker. Removing it changes the entity's
+/// visibility and can despawn its remote copies; remove `Replicated` instead to pause replication
+/// without despawning them. Component removals made during the pause are not replayed when
+/// replication resumes.
 ///
 /// The target is evaluated as a Replicon [`VisibilityFilter`](bevy_replicon::prelude::VisibilityFilter):
 /// spawning (or replacing) it evaluates visibility against all connected links, and it composes
@@ -143,7 +147,7 @@ pub struct ReplicationSender;
 /// # {
 /// use bevy_app::App;
 /// use bevy_ecs::prelude::Entity;
-/// use bevy_replicon::prelude::VisibilityFilter;
+/// use bevy_replicon::prelude::{Replicated, VisibilityFilter};
 /// use lightyear_connection::network_target::NetworkTarget;
 /// use lightyear_core::id::{PeerId, RemoteId};
 /// use lightyear_replication::prelude::*;
@@ -155,13 +159,13 @@ pub struct ReplicationSender;
 /// let alice = PeerId::Entity(1);
 /// let bob = PeerId::Entity(2);
 ///
-/// // Spawn an entity replicated to Alice only, and `Replicating` is added
+/// // Spawn an entity replicated to Alice only, and `Replicated` is added
 /// // automatically as a required component.
 /// let entity = app
 ///     .world_mut()
 ///     .spawn(Replicate::to_clients(NetworkTarget::Single(alice)))
 ///     .id();
-/// assert!(app.world().get::<Replicating>(entity).is_some());
+/// assert!(app.world().get::<Replicated>(entity).is_some());
 ///
 /// // Replacing the target re-evaluates visibility against all links.
 /// app.world_mut()
@@ -178,16 +182,6 @@ pub struct ReplicationSender;
 /// # }
 /// ```
 pub type Replicate = ReplicationTarget<()>;
-
-/// Marker component that enables replication for a sender-side entity.
-///
-/// [`Replicate`] inserts this component automatically. Remove it to pause all replication messages
-/// for the entity, including its despawn, while keeping [`Replicate`]'s target configuration. Insert
-/// it again to resume replication.
-///
-/// Component removals that happen while replication is paused are not replayed automatically when
-/// replication resumes.
-pub use bevy_replicon::prelude::Replicated as Replicating;
 
 /// Replication target configuration, evaluated as a Replicon [`VisibilityFilter`].
 ///
@@ -292,7 +286,7 @@ fn on_replicate_remove(trigger: On<Remove, Replicate>, mut commands: Commands) {
             }
         }
         if let Ok(mut entity_mut) = world.get_entity_mut(entity) {
-            entity_mut.remove::<Replicating>();
+            entity_mut.remove::<Replicated>();
         }
     });
 }
@@ -799,7 +793,7 @@ impl Plugin for SendPlugin {
             ServerSystems::Send.in_set(ReplicationSystems::Send),
         );
 
-        app.register_required_components::<Replicate, Replicating>();
+        app.register_required_components::<Replicate, Replicated>();
         // Replication targets are `VisibilityFilter`s: Replicon evaluates them on
         // insertion and on link changes, replacing the previous manual bit writes.
         app.add_visibility_filter::<Replicate>();

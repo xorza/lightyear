@@ -7,10 +7,11 @@ use crate::stepper::{ClientServerStepper, StepperConfig};
 use bevy::prelude::*;
 use core::time::Duration;
 use lightyear_core::frame_interpolation::FrameInterpolationHistory;
+use lightyear_core::prediction::Predicted;
 use lightyear_core::prelude::Tick;
 use lightyear_prediction::correction::PreviousVisual;
 use lightyear_prediction::predicted_history::PredictionHistory;
-use lightyear_prediction::prelude::{CorrectionPolicy, Predicted, VisualCorrection};
+use lightyear_prediction::prelude::{CorrectionPolicy, VisualCorrection};
 use test_log::test;
 
 fn replay_prediction_only(mut components: Query<&mut CompPredictionOnly, With<Predicted>>) {

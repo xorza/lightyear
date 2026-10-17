@@ -4,6 +4,8 @@ use crate::client_server::prediction::{
 use crate::protocol::{CompFull, CompNotNetworked, CompPredictionOnly, CompRepliconDiff};
 use crate::stepper::*;
 use bevy::prelude::*;
+use bevy_replicon::client::confirm_history::ConfirmHistory;
+use bevy_replicon::client::server_mutate_ticks::ServerMutateTicks;
 use bevy_replicon::prelude::{ClientSystems, RepliconTick};
 use bevy_replicon::shared::replication::diff::diff_index::DiffIndex;
 use bevy_replicon::shared::replication::storage::ReplicationStorage;

@@ -1,9 +1,9 @@
-use crate::Predicted;
 use crate::manager::PredictionManager;
 use crate::prelude::LocallyPredicted;
 use bevy_ecs::error::ignore;
 use bevy_ecs::prelude::*;
 use bevy_reflect::Reflect;
+use lightyear_core::prediction::Predicted;
 use lightyear_core::prelude::{LocalTimeline, Tick};
 use lightyear_replication::prelude::PreSpawned;
 use lightyear_sync::prelude::InputTimelineConfig;

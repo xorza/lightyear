@@ -9,26 +9,28 @@ use crate::archetypes::{
 };
 use crate::registry::PredictionRegistry;
 use crate::rollback::LocallyPredicted;
-use crate::{Predicted, SyncComponent, manager::PredictionManager};
+use crate::{SyncComponent, manager::PredictionManager};
 use bevy_ecs::archetype::Archetype;
 use bevy_ecs::component::ComponentIdFor;
 use bevy_ecs::prelude::*;
 use bevy_ecs::resource::IsResource;
 use bevy_ecs::world::unsafe_world_cell::UnsafeWorldCell;
 use bevy_reflect::Reflect;
+use bevy_replicon::client::confirm_history::ConfirmHistory;
 use bevy_replicon::shared::replication::diff::{DiffBuffer, Diffable as RepliconDiffable};
 use bevy_replicon::shared::replication::storage::ReplicationStorage;
 use bevy_utils::prelude::DebugName;
 use core::fmt::{self, Debug, Display};
 use core::ops::{Deref, DerefMut};
 use lightyear_core::history_buffer::{HistoryBuffer, HistoryState};
+use lightyear_core::prediction::Predicted;
 use lightyear_core::prelude::{ConfirmedHistory, LocalTimeline};
 use lightyear_core::tick::Tick;
 use lightyear_core::timeline::LocalTimelineShift;
 use lightyear_replication::checkpoint::ReplicationCheckpointMap;
 use lightyear_replication::deferred_entity::DeferredEntityCommands;
 use lightyear_replication::diff_history::HistoryDiffReceiver;
-use lightyear_replication::prelude::{ConfirmHistory, PreSpawned};
+use lightyear_replication::prelude::PreSpawned;
 use lightyear_replication::registry::ComponentRegistry;
 use lightyear_sync::prelude::{InputTimelineConfig, SyncedLocalTimeline};
 use lightyear_utils::ecs::get_component_unchecked;
@@ -432,8 +434,8 @@ pub(crate) fn add_history_diff_receiver<C: SyncComponent + RepliconDiffable>(
                 return;
             };
             entity_mut
-                .get::<lightyear_replication::prelude::ConfirmHistory>()
-                .map(lightyear_replication::prelude::ConfirmHistory::last_tick)
+                .get::<ConfirmHistory>()
+                .map(ConfirmHistory::last_tick)
         };
         let seed = seed_inputs.and_then(|confirm_tick| {
             let cursor = world

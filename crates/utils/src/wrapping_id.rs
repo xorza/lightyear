@@ -4,14 +4,11 @@ pub trait WrappedId {
     fn rem(&self, total: usize) -> usize;
 }
 
-pub use pastey::paste;
-
 /// Index that wraps around 2^16.
 #[macro_export]
 macro_rules! wrapping_id {
     ($struct_name:ident) => {
-        use lightyear_utils::wrapping_id::paste;
-        paste! {
+        ::pastey::paste! {
         mod [<$struct_name:lower _module>] {
             use serde::{Deserialize, Serialize};
             use core::ops::{Add, AddAssign, Deref, Sub};

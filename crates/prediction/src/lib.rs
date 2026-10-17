@@ -14,7 +14,6 @@ pub mod rollback;
 pub mod switch;
 
 pub mod prelude {
-    pub use crate::Predicted;
     pub use crate::correction::{CorrectionEase, CorrectionPolicy, VisualCorrection};
     pub use crate::despawn::{PredictionDespawnCommandsExt, PredictionDisable};
     pub use crate::diagnostics::PredictionMetrics;
@@ -35,7 +34,6 @@ pub mod prelude {
 }
 
 use bevy_ecs::component::{Component, Mutable};
-pub use lightyear_core::prediction::Predicted;
 
 /// Trait for components that can be synchronized between a confirmed entity and its predicted/interpolated counterpart.
 ///
