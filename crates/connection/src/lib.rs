@@ -37,9 +37,6 @@ pub mod network_topology;
 pub mod p2p;
 pub mod raw;
 
-#[deprecated(note = "Use ConnectionSystems instead")]
-pub type ConnectionSet = ConnectionSystems;
-
 /// System sets for connection-related logic.
 /// These are used to order systems that handle receiving and sending packets.
 #[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone, Copy)]

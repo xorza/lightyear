@@ -28,8 +28,6 @@ use serde::de::DeserializeOwned;
 use smallvec::SmallVec;
 use tracing::trace;
 
-#[deprecated(note = "Use RelationshipSystems instead")]
-pub type RelationshipSet = RelationshipSystems;
 #[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone, Copy)]
 pub enum RelationshipSystems {
     // PreUpdate

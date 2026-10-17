@@ -23,9 +23,6 @@ use lightyear_utils::adaptive_for_each_mut;
 #[allow(unused_imports)]
 use tracing::{info, trace};
 
-#[deprecated(note = "Use PingSystems instead")]
-pub type PingSet = PingSystems;
-
 #[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone, Copy)]
 pub enum PingSystems {
     /// Receive messages from the Link and buffer them into the ChannelReceivers

@@ -8,23 +8,8 @@ use test_log::test;
 use tracing::info;
 
 /// https://github.com/cBournhonesque/lightyear/issues/627
-/// Test that when we spawn a parent + child with hierarchy (ParentSync),
-/// the parent-child hierarchy is maintained on the predicted entities
-///
-/// Flow:
-/// 1) Parent/Child get spawned on client
-/// 2) All components are inserted on child, including ParentSync (which is mapped correctly)
-///    and ShouldBePredicted
-/// 3) In PredictionSet::Spawn, child-predicted is spawned, and Confirmed is added on child
-/// 4) Because Confirmed is added, we send an event to sync components from Confirmed to child-predicted
-///    NOTE: we cannot sync the components at this point, because the parent-predicted entity is not spawned
-///    so the ParentSync component cannot be mapped properly when it's synced to the child-predicted entity!
-///
-/// We want to make sure that the order is
-/// "replicate-components -> spawn-prediction (for both child/parent) -> sync components (including ParentSync) -> update hierarchy"
-/// instead of
-/// "replicate-components -> spawn-prediction (for child) -> sync components (including ParentSync)
-///   -> spawn-prediction (for parent) -> sync components -> update hierarchy"
+/// A predicted parent and its child keep their hierarchy on the client: the child's `ChildOf`
+/// names the client's entity for the server's parent.
 #[test]
 fn test_spawn_predicted_with_hierarchy() {
     let mut stepper = ClientServerStepper::from_config(StepperConfig::single());

@@ -11,9 +11,6 @@ use lightyear_connection::client::{Connected, Disconnected};
 use lightyear_core::prelude::{TimelineRegistry, TimelineSystems};
 use lightyear_transport::plugin::{TransportPlugin, TransportSystems};
 
-#[deprecated(note = "Use MessageSystems instead")]
-pub type MessageSet = MessageSystems;
-
 /// System sets for the typed-message pipeline.
 ///
 /// [`Receive`](Self::Receive) is the public ordering boundary for the complete

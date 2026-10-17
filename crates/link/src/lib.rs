@@ -354,10 +354,6 @@ pub struct LinkStats {
     pub jitter: Duration,
 }
 
-#[deprecated(note = "Use LinkSystems instead")]
-/// Deprecated alias for [`LinkSystems`].
-pub type LinkSet = LinkSystems;
-
 /// System sets for `Link`-related operations.
 ///
 /// These are used to order systems that handle:
@@ -374,10 +370,6 @@ pub enum LinkSystems {
     /// Flush queued [`SendPayload`] values from [`LinkSender`] to IO backends.
     Send,
 }
-
-#[deprecated(note = "Use LinkReceiveSystems instead")]
-/// Deprecated alias for [`LinkReceiveSystems`].
-pub type LinkReceiveSet = LinkReceiveSystems;
 
 /// System sets that make up [`LinkSystems::Receive`].
 ///

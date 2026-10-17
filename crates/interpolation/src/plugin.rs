@@ -94,9 +94,6 @@ impl Plugin for InterpolationMarkerPlugin {
     }
 }
 
-#[deprecated(note = "Use InterpolationSystems instead")]
-pub type InterpolationSet = InterpolationSystems;
-
 #[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone, Copy)]
 pub enum InterpolationSystems {
     /// Update component histories and apply Lightyear-owned interpolation.

@@ -90,9 +90,6 @@ impl Plugin for PredictionMarkerPlugin {
     }
 }
 
-#[deprecated(note = "Use PredictionSystems instead")]
-pub type PredictionSet = PredictionSystems;
-
 #[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone, Copy)]
 pub enum PredictionSystems {
     // PreUpdate Sets
@@ -157,21 +154,6 @@ pub fn add_non_networked_rollback_systems<C: Component<Mutability = Mutable> + C
         PostUpdate,
         prune_confirmed_history::<C>.in_set(PredictionSystems::All),
     );
-}
-
-/// Enables rollbacking a resource. As a rule of thumb, only use on resources
-/// that are only modified by systems in the `FixedMain` schedule. This is
-/// because rollbacks only run the `FixedMain` schedule. For example, the
-/// `Time<Fixed>` resource is modified by
-/// `bevy_time::fixed::run_fixed_main_schedule()` which is run outside of the
-/// `FixedMain` schedule and so it should not be used in this function.
-///
-/// As a side note, the `Time<Fixed>` resource is already rollbacked internally
-/// by lightyear so that it can be used accurately within systems within the
-/// `FixedMain` schedule during a rollback.
-#[deprecated(note = "use `app.resource::<R>().local_rollback()` instead")]
-pub fn add_resource_rollback_systems<R: Resource<Mutability = Mutable> + Clone>(app: &mut App) {
-    add_non_networked_rollback_systems::<R>(app);
 }
 
 pub(crate) fn add_prediction_systems<C: SyncComponent>(app: &mut App) {

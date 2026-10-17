@@ -34,9 +34,6 @@ use tracing::debug;
 #[derive(Default)]
 pub(crate) struct PreSpawnedPlugin;
 
-#[deprecated(note = "Use PreSpawnedSystems instead")]
-pub type PreSpawnedSet = PreSpawnedSystems;
-
 #[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone, Copy)]
 pub enum PreSpawnedSystems {
     // PostUpdate Sets

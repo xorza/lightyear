@@ -6,7 +6,6 @@ use bevy_ecs::resource::Resource;
 use bevy_replicon::prelude::{AppRuleExt, ReplicationMode, RuleFns};
 use bevy_replicon::shared::replication::diff::Diffable as RepliconDiffable;
 use bevy_replicon::shared::replication::registry::receive_fns::MutWrite;
-use bevy_replicon::shared::replication::registry::rule_fns::{DeserializeFn, SerializeFn};
 use bevy_replicon::shared::replication::rules::filter::FilterRules;
 use serde::{Serialize, de::DeserializeOwned};
 
@@ -37,57 +36,6 @@ pub trait AppComponentExt {
     /// this returns the same builder as [`AppComponentExt::component`] with a
     /// resource-specific bound.
     fn resource<R: Resource>(&mut self) -> ComponentRegistration<'_, R>;
-
-    /// Registers the component in the Registry
-    /// This component can now be sent over the network.
-    #[deprecated(note = "use `app.component::<C>().replicate()` instead")]
-    fn register_component<C: Component<Mutability: MutWrite<C>> + Serialize + DeserializeOwned>(
-        &mut self,
-    ) -> ComponentRegistration<'_, C>;
-
-    /// Registers the component using Replicon's diff-based replication.
-    #[deprecated(note = "use `app.component::<C>().replicate_diff()` instead")]
-    fn register_component_diff<C: RepliconDiffable>(&mut self) -> ComponentRegistration<'_, C>;
-
-    /// Registers the component in the Registry with `ReplicationMode::Once`.
-    ///
-    /// This component can now be sent over the network, but only insertions and
-    /// removals are replicated. Component mutations are not sent.
-    #[deprecated(note = "use `app.component::<C>().replicate_once()` instead")]
-    fn register_component_once<
-        C: Component<Mutability: MutWrite<C>> + Serialize + DeserializeOwned,
-    >(
-        &mut self,
-    ) -> ComponentRegistration<'_, C>;
-
-    /// Registers the component in the Registry: this component can now be sent over the network.
-    ///
-    /// You need to provide your own serialization functions.
-    #[deprecated(note = "use `app.component::<C>().replicate_with(...)` instead")]
-    fn register_component_with<C: Component<Mutability: MutWrite<C>>>(
-        &mut self,
-        serialize_fn: SerializeFn<C>,
-        deserialize_fn: DeserializeFn<C>,
-    ) -> ComponentRegistration<'_, C>;
-
-    /// Registers the component in the Registry with custom serialization and
-    /// `ReplicationMode::Once`.
-    #[deprecated(note = "use `app.component::<C>().replicate_once_with(...)` instead")]
-    fn register_component_once_with<C: Component<Mutability: MutWrite<C>>>(
-        &mut self,
-        serialize_fn: SerializeFn<C>,
-        deserialize_fn: DeserializeFn<C>,
-    ) -> ComponentRegistration<'_, C>;
-
-    /// Returns a ComponentRegistration for a component that is not networked.
-    ///
-    /// This can be useful for components that are not networked but that you still need
-    /// to sync to predicted or interpolated entities; or for which you need to enable
-    /// rollback.
-    #[deprecated(note = "use `app.local_rollback::<C>()` for non-networked rollback")]
-    fn non_networked_component<C: Component<Mutability: MutWrite<C>>>(
-        &mut self,
-    ) -> ComponentRegistration<'_, C>;
 }
 
 impl AppComponentExt for App {
@@ -98,48 +46,6 @@ impl AppComponentExt for App {
 
     fn resource<R: Resource>(&mut self) -> ComponentRegistration<'_, R> {
         self.component::<R>()
-    }
-
-    fn register_component<C: Component<Mutability: MutWrite<C>> + Serialize + DeserializeOwned>(
-        &mut self,
-    ) -> ComponentRegistration<'_, C> {
-        self.component::<C>().replicate()
-    }
-
-    fn register_component_diff<C: RepliconDiffable>(&mut self) -> ComponentRegistration<'_, C> {
-        self.component::<C>().replicate_diff()
-    }
-
-    fn register_component_once<
-        C: Component<Mutability: MutWrite<C>> + Serialize + DeserializeOwned,
-    >(
-        &mut self,
-    ) -> ComponentRegistration<'_, C> {
-        self.component::<C>().replicate_once()
-    }
-
-    fn register_component_with<C: Component<Mutability: MutWrite<C>>>(
-        &mut self,
-        serialize_fn: SerializeFn<C>,
-        deserialize_fn: DeserializeFn<C>,
-    ) -> ComponentRegistration<'_, C> {
-        self.component::<C>()
-            .replicate_with(RuleFns::new(serialize_fn, deserialize_fn))
-    }
-
-    fn register_component_once_with<C: Component<Mutability: MutWrite<C>>>(
-        &mut self,
-        serialize_fn: SerializeFn<C>,
-        deserialize_fn: DeserializeFn<C>,
-    ) -> ComponentRegistration<'_, C> {
-        self.component::<C>()
-            .replicate_once_with(RuleFns::new(serialize_fn, deserialize_fn))
-    }
-
-    fn non_networked_component<C: Component<Mutability: MutWrite<C>>>(
-        &mut self,
-    ) -> ComponentRegistration<'_, C> {
-        ComponentRegistration::new(self)
     }
 }
 

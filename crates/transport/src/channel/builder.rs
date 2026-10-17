@@ -431,11 +431,6 @@ impl Transport {
         self.add_channel_send::<C>(*settings, channel_id);
     }
 
-    #[deprecated(note = "Use add_channel_send_from_registry instead")]
-    pub fn add_sender_from_registry<C: Channel>(&mut self, registry: &ChannelRegistry) {
-        self.add_channel_send_from_registry::<C>(registry);
-    }
-
     /// Adds a manually configured receiving channel.
     ///
     /// Normal application setup should use [`Self::add_channel_receive_from_registry`].
@@ -460,11 +455,6 @@ impl Transport {
         };
         let channel_id = *registry.get_net_from_kind(&ChannelKind::of::<C>()).unwrap();
         self.add_channel_receive::<C>(*settings, channel_id);
-    }
-
-    #[deprecated(note = "Use add_channel_receive_from_registry instead")]
-    pub fn add_receiver_from_registry<C: Channel>(&mut self, registry: &ChannelRegistry) {
-        self.add_channel_receive_from_registry::<C>(registry);
     }
 
     pub fn send_with_priority<C: Channel>(
