@@ -157,9 +157,7 @@ impl CrossbeamPlugin {
                         let _ = io.link.send.drain();
                         commands.trigger(Unlink {
                             entity,
-                            reason: UnlinkReason::TransportError(String::from(
-                                "Crossbeam channel disconnected",
-                            )),
+                            reason: UnlinkReason::PeerStopped,
                         });
                         break;
                     }
@@ -197,9 +195,7 @@ impl CrossbeamPlugin {
                         );
                         commands.trigger(Unlink {
                             entity,
-                            reason: UnlinkReason::TransportError(String::from(
-                                "Crossbeam channel disconnected",
-                            )),
+                            reason: UnlinkReason::PeerStopped,
                         });
                         break;
                     }
@@ -274,7 +270,12 @@ mod tests {
         );
         assert_eq!(link.state, LinkState::Unlinked);
         assert!(app.world().get::<Linked>(sender_entity).is_none());
-        assert!(app.world().get::<crate::Unlinked>(sender_entity).is_some());
+        assert_eq!(
+            app.world()
+                .get::<crate::Unlinked>(sender_entity)
+                .map(|unlinked| unlinked.reason),
+            Some(UnlinkReason::PeerStopped)
+        );
         drop(peer_sender);
     }
 
@@ -302,7 +303,12 @@ mod tests {
             .expect("client entity should still have Link");
         assert_eq!(link.state, LinkState::Unlinked);
         assert!(app.world().get::<Linked>(client_entity).is_none());
-        assert!(app.world().get::<crate::Unlinked>(client_entity).is_some());
+        assert_eq!(
+            app.world()
+                .get::<crate::Unlinked>(client_entity)
+                .map(|unlinked| unlinked.reason),
+            Some(UnlinkReason::PeerStopped)
+        );
     }
 
     /// Verify multi-payload round-trip send/receive between a paired client and

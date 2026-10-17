@@ -9,10 +9,10 @@ pub mod server;
 
 #[cfg(test)]
 mod tests {
-    use crate::client::{Connected, Disconnected};
+    use crate::client::{Connected, Disconnected, DisconnectedReason};
     use bevy_app::App;
     use lightyear_link::crossbeam::{CrossbeamIo, CrossbeamPlugin};
-    use lightyear_link::{Link, LinkStart, Linked};
+    use lightyear_link::{Link, LinkStart, Linked, UnlinkReason};
 
     /// A raw client should observe the crossbeam channel disconnect through the
     /// regular Link -> Connection lifecycle and become Disconnected.
@@ -43,7 +43,12 @@ mod tests {
 
         assert!(app.world().get::<Linked>(client_entity).is_none());
         assert!(app.world().get::<Connected>(client_entity).is_none());
-        assert!(app.world().get::<Disconnected>(client_entity).is_some());
+        assert_eq!(
+            app.world()
+                .get::<Disconnected>(client_entity)
+                .map(|disconnected| &disconnected.reason),
+            Some(&DisconnectedReason::LinkFailed(UnlinkReason::PeerStopped))
+        );
     }
 
     /// Pair `CrossbeamPlugin` with server-side `RawConnectionPlugin`, mark the

@@ -3,7 +3,7 @@ use aeronet_io::connection::LocalAddr;
 use bevy_app::{App, Plugin};
 use bevy_ecs::prelude::*;
 use lightyear_core::id::{LocalId, PeerId, RemoteId};
-use lightyear_link::{Link, Linked, Unlink, UnlinkReason};
+use lightyear_link::{AppCode, Link, Linked, Unlink, UnlinkReason};
 #[allow(unused_imports)]
 use tracing::{info, trace};
 
@@ -48,7 +48,7 @@ impl RawConnectionPlugin {
             trace!("RawClient Disconnect! Triggering Unlink");
             commands.trigger(Unlink {
                 entity: trigger.entity,
-                reason: UnlinkReason::UserRequested(None),
+                reason: UnlinkReason::Closed(AppCode::ENDED),
             });
         }
     }
@@ -68,10 +68,12 @@ impl Plugin for RawConnectionPlugin {
 mod tests {
     use super::*;
 
+    /// The client keeps the ids its IO layer set, and a `Disconnect` closes its link with
+    /// `AppCode::ENDED`.
     #[test]
-    fn raw_client_preserves_preconfigured_peer_ids() {
+    fn raw_client_keeps_preconfigured_peer_ids_and_closes_with_ended() {
         let mut app = App::new();
-        app.add_plugins(RawConnectionPlugin);
+        app.add_plugins((lightyear_link::LinkPlugin, RawConnectionPlugin));
         let local_id = LocalId(PeerId::Entity(1));
         let remote_id = RemoteId(PeerId::Entity(2));
         let entity = app
@@ -87,9 +89,18 @@ mod tests {
         app.world_mut().entity_mut(entity).insert(Linked);
         app.world_mut().flush();
 
-        let entity = app.world().entity(entity);
-        assert!(entity.contains::<Connected>());
-        assert_eq!(entity.get::<LocalId>(), Some(&local_id));
-        assert_eq!(entity.get::<RemoteId>(), Some(&remote_id));
+        let linked = app.world().entity(entity);
+        assert!(linked.contains::<Connected>());
+        assert_eq!(linked.get::<LocalId>(), Some(&local_id));
+        assert_eq!(linked.get::<RemoteId>(), Some(&remote_id));
+
+        app.world_mut().trigger(Disconnect { entity });
+        app.world_mut().flush();
+        assert_eq!(
+            app.world()
+                .get::<lightyear_link::Unlinked>(entity)
+                .map(|unlinked| unlinked.reason),
+            Some(UnlinkReason::Closed(AppCode::ENDED))
+        );
     }
 }

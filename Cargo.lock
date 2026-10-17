@@ -4030,6 +4030,7 @@ dependencies = [
  "lightyear_core",
  "lightyear_utils",
  "rand 0.10.3",
+ "serde",
  "tracing",
 ]
 

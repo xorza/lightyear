@@ -103,10 +103,6 @@ pub enum DisconnectedReason {
     LinkFailed(UnlinkReason),
     /// The local user requested the disconnect, optionally with additional context.
     UserRequested(Option<String>),
-    /// The remote peer disconnected, optionally with a reason.
-    ByPeer(Option<String>),
-    /// The connection transport or protocol encountered an error.
-    TransportError(String),
 }
 
 impl core::fmt::Display for DisconnectedReason {
@@ -116,9 +112,6 @@ impl core::fmt::Display for DisconnectedReason {
             Self::LinkFailed(reason) => write!(f, "Link failed: {reason}"),
             Self::UserRequested(Some(reason)) => write!(f, "User requested: {reason}"),
             Self::UserRequested(None) => f.write_str("User requested"),
-            Self::ByPeer(Some(reason)) => write!(f, "Disconnected by peer: {reason}"),
-            Self::ByPeer(None) => f.write_str("Disconnected by peer"),
-            Self::TransportError(reason) => write!(f, "Transport error: {reason}"),
         }
     }
 }
@@ -212,7 +205,7 @@ impl ConnectionPlugin {
                 unlinked.reason
             );
             commands.entity(trigger.entity).insert(Disconnected {
-                reason: DisconnectedReason::LinkFailed(unlinked.reason.clone()),
+                reason: DisconnectedReason::LinkFailed(unlinked.reason),
             });
         }
     }
@@ -232,6 +225,7 @@ mod tests {
     use crate::client_of::ClientOf;
     use bevy_ecs::world::World;
     use lightyear_core::id::PeerId;
+    use lightyear_link::AppCode;
 
     #[test]
     fn test_connection() {}
@@ -267,7 +261,7 @@ mod tests {
         let entity = app
             .world_mut()
             .spawn(Unlinked {
-                reason: UnlinkReason::ByPeer(String::from("server shutdown")),
+                reason: UnlinkReason::ClosedByPeer(AppCode::new(AppCode::FIRST)),
             })
             .id();
 
@@ -275,7 +269,9 @@ mod tests {
 
         assert_eq!(
             app.world().get::<Disconnected>(entity).unwrap().reason,
-            DisconnectedReason::LinkFailed(UnlinkReason::ByPeer(String::from("server shutdown")))
+            DisconnectedReason::LinkFailed(UnlinkReason::ClosedByPeer(AppCode::new(
+                AppCode::FIRST
+            )))
         );
     }
 }

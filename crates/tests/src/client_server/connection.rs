@@ -132,7 +132,7 @@ mod disconnection_log_tests {
                 .world_mut()
                 .entity_mut(server_client)
                 .insert(Unlinked {
-                    reason: UnlinkReason::TransportError("connection timed out".to_string()),
+                    reason: UnlinkReason::TimedOut,
                 });
 
             stepper.frame_step(1);

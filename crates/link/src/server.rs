@@ -73,12 +73,13 @@ impl Server {
     ) {
         if let Ok((server_link, unlinked)) = query.get_mut(trigger.entity) {
             for link_of in server_link.collection() {
+                // An IO backend closes the link's connection on `Unlink`, which the despawn alone
+                // would skip.
                 commands.trigger(Unlink {
                     entity: *link_of,
-                    reason: unlinked.reason.clone(),
+                    reason: unlinked.reason,
                 });
                 if let Ok(mut c) = commands.get_entity(*link_of) {
-                    // cannot simply insert Unlinked because then we wouldn't close aeronet sessions...
                     trace!("Despawning link entity because its server became unlinked");
                     c.try_despawn();
                 }

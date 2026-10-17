@@ -21,6 +21,7 @@ lightyear_utils.workspace = true
 aeronet_io.workspace = true
 crossbeam-channel.workspace = true
 rand.workspace = true
+serde.workspace = true
 tracing.workspace = true
 bytes.workspace = true
 

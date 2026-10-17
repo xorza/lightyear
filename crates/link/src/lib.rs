@@ -17,20 +17,25 @@
 //!
 //! Server-side fan-out relationships live in [`server`].
 
+mod app_code;
 mod conditioner;
 pub mod crossbeam;
+mod link_binding;
 mod mtu;
 pub mod server;
+mod unlink_reason;
 
 use std::collections::vec_deque::Drain;
 
+pub use crate::app_code::AppCode;
 pub use crate::conditioner::LinkConditioner;
+pub use crate::link_binding::LinkBinding;
 pub use crate::mtu::{DEFAULT_MTU, LinkMtu, MtuTooSmall};
+pub use crate::unlink_reason::UnlinkReason;
 use bevy_app::{App, Plugin, PostUpdate, PreUpdate};
 use bevy_ecs::lifecycle::HookContext;
 use bevy_ecs::prelude::*;
 use bevy_ecs::world::DeferredWorld;
-use bevy_reflect::Reflect;
 use bytes::{Bytes, BytesMut};
 use core::ops::Deref;
 use core::time::Duration;
@@ -42,8 +47,8 @@ pub mod prelude {
     pub use crate::conditioner::{LinkConditionerConfig, LinkConditionerState};
     pub use crate::server::{LinkOf, Server};
     pub use crate::{
-        DEFAULT_MTU, Link, LinkMtu, LinkStart, LinkStats, LinkSystems, Linked, Linking,
-        MtuTooSmall, RecvLinkConditioner, Unlink, UnlinkReason, Unlinked,
+        AppCode, DEFAULT_MTU, Link, LinkBinding, LinkMtu, LinkStart, LinkStats, LinkSystems,
+        Linked, Linking, MtuTooSmall, RecvLinkConditioner, Unlink, UnlinkReason, Unlinked,
     };
 
     pub mod server {
@@ -400,35 +405,6 @@ pub struct LinkStart {
     pub entity: Entity,
 }
 
-/// Why a [`Link`] was unlinked via [`Unlink`] or [`Unlinked`].
-#[derive(Default, Debug, Clone, PartialEq, Eq, Reflect)]
-pub enum UnlinkReason {
-    /// The link has not yet been established.
-    #[default]
-    Initial,
-    /// The local user requested the unlink, optionally with additional context.
-    UserRequested(Option<String>),
-    /// The server stopped and closed its links.
-    ServerStopped,
-    /// The remote peer closed the link and supplied a reason.
-    ByPeer(String),
-    /// The transport encountered an error and can no longer communicate with the peer.
-    TransportError(String),
-}
-
-impl core::fmt::Display for UnlinkReason {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        match self {
-            Self::Initial => f.write_str("Not connected"),
-            Self::UserRequested(Some(reason)) => write!(f, "User requested: {reason}"),
-            Self::UserRequested(None) => f.write_str("User requested"),
-            Self::ServerStopped => f.write_str("Server stopped"),
-            Self::ByPeer(reason) => write!(f, "Disconnected by peer: {reason}"),
-            Self::TransportError(reason) => write!(f, "Transport error: {reason}"),
-        }
-    }
-}
-
 /// Entity event requesting that a transport terminate a [`Link`].
 ///
 /// [`LinkPlugin`] observes this event and inserts [`Unlinked`] with the provided reason. Concrete
@@ -545,10 +521,10 @@ impl LinkPlugin {
     }
 
     /// Handles [`Unlink`] requests by inserting [`Unlinked`].
-    fn unlink(mut unlink: On<Unlink>, mut commands: Commands) {
+    fn unlink(unlink: On<Unlink>, mut commands: Commands) {
         if let Ok(mut c) = commands.get_entity(unlink.entity) {
             c.insert(Unlinked {
-                reason: core::mem::take(&mut unlink.reason),
+                reason: unlink.reason,
             });
         }
     }
