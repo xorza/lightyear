@@ -186,7 +186,6 @@ pub(crate) type PrepareRollbackFn = unsafe fn(
     &CachedPredictionComponent,
     Tick,
     Tick,
-    bool,
     &mut DeferredEntityCommands,
 );
 
@@ -683,23 +682,6 @@ impl PredictionRegistry {
 }
 
 pub trait PredictionRegistrationExt<C> {
-    /// Register `write_history` as the default replicon receive function for
-    /// this component, so that replicated values are stored in
-    /// `ConfirmedHistory<C>` as authoritative state (and optionally trigger a
-    /// state rollback) rather than overwriting the component directly.
-    ///
-    /// Use this alongside `local_rollback` when the component is normally
-    /// non-networked (computed from deterministic inputs) but needs an initial
-    /// value from replication (e.g. `replicate_once` on a physics component
-    /// for late-joining clients).
-    ///
-    /// Unlike marker-gated write functions, this fires for every replicated
-    /// update of the component — including init messages where marker
-    /// components haven't been applied yet to the newly-spawned entity.
-    fn add_confirmed_write(self) -> Self
-    where
-        C: SyncComponent;
-
     /// Marks this component as using custom correction logic.
     ///
     /// This stores the pre-rollback visual value, but does not add Lightyear's
@@ -945,16 +927,6 @@ impl<'a, C> LocalRollbackComponentRegistration<'a, C> {
         self
     }
 
-    /// Route replicated writes into confirmed history while an entity is
-    /// waiting for deterministic catch-up.
-    pub fn add_confirmed_write(mut self) -> Self
-    where
-        C: SyncComponent,
-    {
-        self.registration = self.registration.add_confirmed_write();
-        self
-    }
-
     /// Return to the general component registration builder.
     pub fn into_component_registration(self) -> ComponentRegistration<'a, C> {
         self.registration
@@ -972,33 +944,6 @@ impl<'a, C> ComponentRegistrator<'a, C> for LocalRollbackComponentRegistration<'
 }
 
 impl<C> PredictionRegistrationExt<C> for ComponentRegistration<'_, C> {
-    fn add_confirmed_write(self) -> Self
-    where
-        C: SyncComponent,
-    {
-        if !self.app.world().contains_resource::<PredictionRegistry>() {
-            return self;
-        }
-        register_prediction_metadata::<C>(self.app);
-        // Only `CatchUpGated` routes replicated component state into history.
-        // Initial values for non-gated deterministic entities should use the
-        // default Replicon write path.
-        //
-        // Replicon chooses the receive function before applying incoming
-        // components. `CatchUpGated` is therefore the marker that can catch the
-        // component write while the entity is awaiting catch-up.
-        //
-        // `DeterministicPredicted` is intentionally not registered here. Outside
-        // catch-up there is no forced state rollback that would insert a
-        // `ConfirmedHistory<C>` value back into the live entity.
-        use crate::rollback::CatchUpGated;
-        self.app.set_marker_fns::<CatchUpGated, C>(
-            write_initial_live_and_history::<C>,
-            remove_history::<C>,
-        );
-        self
-    }
-
     fn custom_correction(self) -> Self
     where
         C: SyncComponent,
@@ -1219,9 +1164,8 @@ fn write_history<C: SyncComponent>(
 /// Writes a first authoritative value to both the live component and confirmed
 /// history.
 ///
-/// This is shared by `PredictedSend` and `CatchUpGated`. It lets a fresh entity
-/// materialize normally while keeping an active catch-up or existing predicted
-/// entity history-only. Replicon batches the live component and history
+/// `PredictedSend` uses it. It lets a fresh entity materialize normally while
+/// keeping an existing predicted entity history-only. Replicon batches the live component and history
 /// insertions, so role-marker observers see the complete initial state.
 fn write_initial_live_and_history<C: SyncComponent>(
     ctx: &mut WriteCtx,
@@ -1793,21 +1737,6 @@ mod tests {
                 .unwrap()
                 .get_state(Tick(0)),
             Some(&HistoryState::Updated(LocalRollbackOnlyResource(42)))
-        );
-    }
-
-    #[test]
-    fn component_builder_confirmed_write_registers_prediction_metadata() {
-        let mut app = prediction_app();
-
-        app.component::<LocalRollbackComponent>()
-            .local_rollback()
-            .add_confirmed_write();
-
-        assert!(
-            app.world()
-                .resource::<PredictionRegistry>()
-                .predicted::<LocalRollbackComponent>()
         );
     }
 

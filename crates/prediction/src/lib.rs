@@ -13,15 +13,13 @@ pub mod registry;
 pub mod rollback;
 pub mod switch;
 
-mod deterministic;
-
 pub mod prelude {
     pub use crate::Predicted;
     pub use crate::correction::{CorrectionEase, CorrectionPolicy, VisualCorrection};
     pub use crate::despawn::{PredictionDespawnCommandsExt, PredictionDisable};
     pub use crate::diagnostics::PredictionMetrics;
     pub use crate::manager::{
-        LastConfirmedInput, PredictionManager, RollbackMode, RollbackPolicy, StateRollbackMetadata,
+        PredictionManager, RollbackMode, RollbackPolicy, StateRollbackMetadata,
     };
     pub use crate::plugin::{PredictionMarkerPlugin, PredictionPlugin, PredictionSystems};
     pub use crate::predicted_history::PredictionHistory;
@@ -31,8 +29,7 @@ pub mod prelude {
         PredictionRegistry,
     };
     pub use crate::rollback::{
-        CatchUpGated, DeterministicPredicted, DisableRollback, DisabledDuringRollback,
-        RollbackSystems,
+        DisableRollback, DisabledDuringRollback, LocallyPredicted, RollbackSystems,
     };
     pub use crate::switch::{SwitchBlend, SwitchDirection, TimelineSwitch, TimelineSwitchSettings};
 }

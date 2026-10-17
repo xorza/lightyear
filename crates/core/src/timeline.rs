@@ -334,15 +334,7 @@ pub struct LocalTimelineShift {
 /// This is in `lightyear_core` to avoid circular dependencies. Many other plugins behave
 /// differently during rollback.
 #[derive(Resource, Debug, Clone, Copy)]
-pub enum Rollback {
-    /// The rollback is initiated because we have received new Confirmed state from the server
-    /// that doesn't match our prediction history.
-    FromState,
-    /// The rollback is initiated because we have received new Inputs for remote clients
-    ///
-    /// We should still check if there are state mismatches
-    FromInputs,
-}
+pub struct Rollback;
 
 /// Run condition to check if we are in rollback
 pub fn is_in_rollback(rollback: Option<Res<Rollback>>) -> bool {

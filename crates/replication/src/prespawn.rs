@@ -276,10 +276,10 @@ impl PreSpawnedReceiver {
     /// Despawn all local PreSpawned entities spawned at a tick >= Tick,
     /// except entities that the caller marks as protected from this rollback.
     ///
-    /// Deterministic one-shot entities can be prespawned and later matched by
-    /// Replicon, but not recreated by rollback replay. Prediction uses this to
-    /// keep `DeterministicPredicted { skip_despawn: true }` entities alive
-    /// during catch-up rollback.
+    /// One-shot entities can be prespawned and later matched by Replicon, but
+    /// not recreated by rollback replay. Prediction uses this to keep
+    /// `LocallyPredicted { skip_despawn: true }` entities alive during a forced
+    /// rollback.
     #[doc(hidden)]
     pub fn despawn_prespawned_after_with(
         &mut self,

@@ -1,6 +1,6 @@
 use crate::Predicted;
 use crate::manager::PredictionManager;
-use crate::prelude::DeterministicPredicted;
+use crate::prelude::LocallyPredicted;
 use bevy_ecs::error::ignore;
 use bevy_ecs::prelude::*;
 use bevy_reflect::Reflect;
@@ -34,7 +34,7 @@ pub struct PredictionDespawnCommand {
 pub struct PredictionDisable {
     /// Tick at which the entity was prediction-despawned.
     ///
-    /// Deterministic prediction retains the entity until this tick falls outside the effective
+    /// A locally predicted entity is retained until this tick falls outside the effective
     /// rollback window, at which point the entity can be permanently reclaimed.
     pub tick: Tick,
 }
@@ -53,12 +53,12 @@ impl Command for PredictionDespawnCommand {
 
         if let Ok(mut entity) = world.get_entity_mut(self.entity) {
             if entity.get::<Predicted>().is_some()
-                || entity.get::<DeterministicPredicted>().is_some()
+                || entity.get::<LocallyPredicted>().is_some()
                 // see https://github.com/cBournhonesque/lightyear/issues/818
                 || entity.get::<PreSpawned>().is_some()
             {
-                // Do not despawn predicted entities immediately. A conventional predicted entity
-                // remains disabled until confirmed replication resolves it; a deterministic-only
+                // Do not despawn predicted entities immediately. A replicated predicted entity
+                // remains disabled until confirmed replication resolves it; a locally predicted
                 // entity remains disabled until its despawn tick falls outside the rollback window.
                 debug!(?self.entity, "inserting prediction disable marker");
                 let disabled_at = entity.world().resource::<LocalTimeline>().tick();
@@ -70,17 +70,14 @@ impl Command for PredictionDespawnCommand {
     }
 }
 
-/// Permanently remove deterministic entities once their despawn tick is outside the rollback
+/// Permanently remove locally predicted entities once their despawn tick is outside the rollback
 /// window.
-pub(crate) fn finalize_deterministic_despawns(
+pub(crate) fn finalize_local_despawns(
     mut commands: Commands,
     timeline: Res<LocalTimeline>,
     prediction_manager: Res<PredictionManager>,
     input_config: Option<Res<InputTimelineConfig>>,
-    query: Query<
-        (Entity, &PredictionDisable),
-        (With<DeterministicPredicted>, Allow<PredictionDisable>),
-    >,
+    query: Query<(Entity, &PredictionDisable), (With<LocallyPredicted>, Allow<PredictionDisable>)>,
 ) {
     let max_rollback_ticks = input_config.as_deref().map_or(
         prediction_manager.rollback_policy.max_rollback_ticks,

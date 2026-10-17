@@ -956,7 +956,7 @@ mod tests {
         app.init_resource::<LocalTimeline>();
         app.init_resource::<ComponentRegistry>();
         app.insert_resource(PredictionManager::default());
-        app.insert_resource(Rollback::FromState);
+        app.insert_resource(Rollback);
         app.world_mut().resource_mut::<LocalTimeline>().0 = 10;
         app.world()
             .resource::<PredictionManager>()
@@ -1126,7 +1126,7 @@ mod tests {
         app.init_resource::<LocalTimeline>();
         app.init_resource::<ComponentRegistry>();
         app.insert_resource(PredictionManager::default());
-        app.insert_resource(Rollback::FromState);
+        app.insert_resource(Rollback);
         app.world_mut().resource_mut::<LocalTimeline>().0 = 10;
         app.world()
             .resource::<PredictionManager>()
@@ -1183,7 +1183,7 @@ mod tests {
 
         app.world_mut().init_resource::<ComponentRegistry>();
         app.world_mut().init_resource::<PredictionManager>();
-        app.world_mut().insert_resource(Rollback::FromState);
+        app.world_mut().insert_resource(Rollback);
         app.world_mut()
             .resource_mut::<lightyear_core::prelude::LocalTimeline>()
             .0 = 10;
@@ -1717,7 +1717,7 @@ mod tests {
         app.world_mut().init_resource::<ComponentRegistry>();
         app.world_mut()
             .insert_resource(PredictionManager::default());
-        app.world_mut().insert_resource(Rollback::FromState);
+        app.world_mut().insert_resource(Rollback);
         app.world_mut()
             .resource_mut::<lightyear_core::prelude::LocalTimeline>()
             .0 = 10;

@@ -16,7 +16,7 @@ use lightyear_prediction::despawn::{PredictionDespawnCommandsExt, PredictionDisa
 use lightyear_prediction::manager::{RollbackMode, StateRollbackMetadata};
 use lightyear_prediction::predicted_history::PredictionHistory;
 use lightyear_prediction::prelude::*;
-use lightyear_prediction::rollback::DeterministicPredicted;
+use lightyear_prediction::rollback::LocallyPredicted;
 use lightyear_replication::diff_history::HistoryDiffReceiver;
 use lightyear_replication::prelude::*;
 use test_log::test;
@@ -274,7 +274,7 @@ fn test_predicted_despawn_restored_on_rollback() {
 // Scenario 4: Entity predicted-spawned → despawned on rollback
 // =============================================================================
 
-/// A DeterministicPredicted entity spawned during prediction should be despawned
+/// A LocallyPredicted entity spawned during prediction should be despawned
 /// if rollback goes back to before the spawn tick.
 #[test]
 fn test_predicted_spawn_despawned_on_rollback() {
@@ -285,7 +285,7 @@ fn test_predicted_spawn_despawned_on_rollback() {
     let predicted_a = stepper
         .client_app()
         .world_mut()
-        .spawn((Predicted, DeterministicPredicted::default(), CompFull(1.0)))
+        .spawn((Predicted, LocallyPredicted::default(), CompFull(1.0)))
         .id();
 
     // trigger a rollback to before the entity was spawned
@@ -1690,24 +1690,24 @@ fn test_predicted_component_kept_when_no_history_sample_at_rollback_tick() {
 // Other rollback tests
 // =============================================================================
 
-/// If we have disable_rollback (DeterministicPredicted):
+/// If we have disable_rollback (LocallyPredicted):
 /// 1) the entity alone doesn't trigger rollback
 /// 2) if a rollback happens (from another entity), we reset to the predicted history value
 #[test]
 fn test_disable_rollback() {
     let (mut stepper, predicted_b) = setup();
 
-    // add a DeterministicPredicted entity (disable state rollback for it)
+    // add a LocallyPredicted entity (disable state rollback for it)
     let predicted_a = stepper
         .client_app()
         .world_mut()
-        .spawn((Predicted, DeterministicPredicted::default(), CompFull(1.0)))
+        .spawn((Predicted, LocallyPredicted::default(), CompFull(1.0)))
         .id();
 
     // value gets synced and added to PredictionHistory
     stepper.frame_step(1);
 
-    // 2. If a rollback happens (triggered by predicted_b), DeterministicPredicted entity
+    // 2. If a rollback happens (triggered by predicted_b), LocallyPredicted entity
     //    gets reset to its historical value
     let tick = stepper.client_tick(0);
 
@@ -1740,7 +1740,7 @@ fn test_disable_rollback() {
     request_forced_rollback_at_completed_tick(&mut stepper, tick);
     stepper.frame_step(1);
 
-    // the DeterministicPredicted entity was rolled back to the past PredictionHistory value
+    // the LocallyPredicted entity was rolled back to the past PredictionHistory value
     assert_eq!(
         stepper
             .client_app()
@@ -1842,10 +1842,10 @@ fn test_rollback_time_resource() {
     );
 }
 
-/// Test that if we spawn a DeterministicPredicted entity with skip_despawn = true
+/// Test that if we spawn a LocallyPredicted entity with skip_despawn = true
 /// We only start enabling rollback for this entity a few ticks after it was spawned.
 #[test]
-fn test_deterministic_predicted_skip_despawn() {
+fn test_locally_predicted_skip_despawn() {
     let (mut stepper, _) = setup();
 
     // add predicted/confirmed entities
@@ -1856,7 +1856,7 @@ fn test_deterministic_predicted_skip_despawn() {
         .world_mut()
         .spawn((
             Predicted,
-            DeterministicPredicted {
+            LocallyPredicted {
                 skip_despawn: true,
                 enable_rollback_after: 2,
             },
@@ -1877,7 +1877,7 @@ fn test_deterministic_predicted_skip_despawn() {
     );
 
     // trigger a rollback at tick + 2, we should re-enable rollback
-    // since it's the spawn_tick of DeterministicPredicted + 2
+    // since it's the spawn_tick of LocallyPredicted + 2
     trigger_state_rollback(&mut stepper, tick + 2);
     stepper.frame_step(1);
     assert!(
@@ -1889,10 +1889,10 @@ fn test_deterministic_predicted_skip_despawn() {
     );
 }
 
-/// Test that if we spawn a DeterministicPredicted entity with skip_despawn = false
+/// Test that if we spawn a LocallyPredicted entity with skip_despawn = false
 /// The entity is despawned it was spawned before the rollback tick.
 #[test]
-fn test_deterministic_predicted_despawn() {
+fn test_locally_predicted_despawn() {
     let (mut stepper, _) = setup();
     stepper.frame_step(1);
 
@@ -1903,10 +1903,10 @@ fn test_deterministic_predicted_despawn() {
     let predicted_a = stepper
         .client_app()
         .world_mut()
-        .spawn((Predicted, DeterministicPredicted::default(), CompFull(1.0)))
+        .spawn((Predicted, LocallyPredicted::default(), CompFull(1.0)))
         .id();
 
-    // trigger a rollback at tick - 2, we should despawn the DeterministicPredicted
+    // trigger a rollback at tick - 2, we should despawn the LocallyPredicted
     // since it was spawned before the rollback
     trigger_state_rollback(&mut stepper, tick - 1);
     stepper.frame_step(1);

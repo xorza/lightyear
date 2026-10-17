@@ -1,8 +1,8 @@
-use super::rollback::{CatchUpGated, RollbackPlugin, RollbackSystems};
+use super::rollback::{RollbackPlugin, RollbackSystems};
 use crate::correction::update_frame_interpolation_post_rollback;
-use crate::despawn::{PredictionDisable, finalize_deterministic_despawns};
+use crate::despawn::{PredictionDisable, finalize_local_despawns};
 use crate::diagnostics::PredictionDiagnosticsPlugin;
-use crate::manager::{LastConfirmedInput, PredictionManager};
+use crate::manager::PredictionManager;
 use crate::predicted_history::{
     PredictionHistory, add_history_diff_receiver, add_prediction_history,
     apply_component_removal_predicted, backfill_confirmed_history_on_predicted,
@@ -45,24 +45,16 @@ pub struct PredictionPlugin;
 pub struct PredictionMarkerPlugin;
 
 // Higher-priority markers win when more than one applies to an update.
-// Prespawn and catch-up must preserve their specialized reconciliation
-// semantics before the general prediction markers are considered. Prespawn is
+// Prespawn must preserve its specialized reconciliation semantics before the
+// general prediction markers are considered. Prespawn is
 // strongest because a locally predicted absence must not be materialized by a
 // lower-priority initial-write path.
 const PRESPAWNED_PRIORITY: usize = 120;
-const CATCH_UP_GATED_PRIORITY: usize = 110;
 const PREDICTED_SEND_PRIORITY: usize = 100;
 const PREDICTED_PRIORITY: usize = 90;
 
 impl Plugin for PredictionMarkerPlugin {
     fn build(&self, app: &mut App) {
-        // `CatchUpGated` is replicated (`replicate_once`), so it must take effect
-        // before other components from the same update are applied.
-        app.register_marker_with::<CatchUpGated>(MarkerConfig {
-            priority: CATCH_UP_GATED_PRIORITY,
-            need_history: true,
-            affects_same_update: true,
-        });
         // A matched prespawn must preserve its locally predicted live value
         // even when PredictedSend is included in the same authoritative update.
         app.register_marker_with::<PreSpawned>(MarkerConfig {
@@ -141,7 +133,7 @@ pub fn add_non_networked_rollback_systems<C: Component<Mutability = Mutable> + C
     );
     // Prune once per frame in PostUpdate (not before the rollback check): Check must
     // see the full confirmed history for this frame's rollback decision, including
-    // catch-up snapshots received in PreUpdate. PostUpdate runs after the fixed loop,
+    // snapshots received in PreUpdate. PostUpdate runs after the fixed loop,
     // so this still bounds growth before the next frame's Check, without running
     // inside rollback replay.
     app.add_systems(
@@ -182,7 +174,7 @@ pub(crate) fn add_prediction_systems<C: SyncComponent>(app: &mut App) {
     );
     // Prune once per frame in PostUpdate (not before the rollback check): Check must
     // see the full confirmed history for this frame's rollback decision, including
-    // catch-up snapshots received in PreUpdate. PostUpdate runs after the fixed loop,
+    // snapshots received in PreUpdate. PostUpdate runs after the fixed loop,
     // so this still bounds growth before the next frame's Check, without running
     // inside rollback replay.
     app.add_systems(
@@ -200,9 +192,6 @@ impl Plugin for PredictionPlugin {
     fn build(&self, app: &mut App) {
         // RESOURCES
         app.init_resource::<PredictionRegistry>();
-        // The rollback systems read it in every app that has this plugin, with or without a
-        // `PredictionManager`, as a host server has none.
-        app.init_resource::<LastConfirmedInput>();
 
         // Custom entity disabling
         let rollback_disable_id = app
@@ -273,7 +262,7 @@ impl Plugin for PredictionPlugin {
         app.configure_sets(FixedPostUpdate, PredictionSystems::All.run_if(should_run));
         app.add_systems(
             FixedPostUpdate,
-            finalize_deterministic_despawns.in_set(PredictionSystems::EntityDespawn),
+            finalize_local_despawns.in_set(PredictionSystems::EntityDespawn),
         );
 
         // PostUpdate
@@ -303,7 +292,6 @@ mod tests {
 
         assert!(!app.world().contains_resource::<PredictionManager>());
         assert!(app.world().contains_resource::<PreSpawnedReceiver>());
-        assert!(app.world().contains_resource::<LastConfirmedInput>());
     }
 
     #[derive(Resource, Default)]
@@ -329,7 +317,7 @@ mod tests {
         app.world_mut().run_schedule(FixedPreUpdate);
         assert_eq!(app.world().resource::<SnapRuns>().0, 0);
 
-        app.insert_resource(Rollback::FromInputs);
+        app.insert_resource(Rollback);
         app.world_mut().run_schedule(FixedPreUpdate);
         assert_eq!(app.world().resource::<SnapRuns>().0, 1);
     }

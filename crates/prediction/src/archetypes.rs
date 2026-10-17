@@ -5,7 +5,7 @@ use crate::registry::{
     PruneHistoryDiffReceiverFn, RollbackMetadata, SnapToConfirmedFn,
     UpdateFrameInterpolationPostRollbackFn,
 };
-use crate::rollback::{DeterministicPredicted, DisableRollback};
+use crate::rollback::{DisableRollback, LocallyPredicted};
 use bevy_ecs::{
     archetype::{Archetype, ArchetypeGeneration, ArchetypeId, Archetypes},
     change_detection::Tick as ChangeTick,
@@ -214,7 +214,7 @@ pub(crate) struct PredictedArchetypes {
     generation: ArchetypeGeneration,
     predicted_component_id: ComponentId,
     confirm_history_component_id: ComponentId,
-    deterministic_predicted_component_id: ComponentId,
+    locally_predicted_component_id: ComponentId,
     disable_rollback_component_id: ComponentId,
     prediction_disable_component_id: ComponentId,
     interpolated_component_id: ComponentId,
@@ -276,8 +276,7 @@ impl FromWorld for PredictedArchetypes {
     fn from_world(world: &mut World) -> Self {
         let predicted_component_id = world.register_component::<Predicted>();
         let confirm_history_component_id = world.register_component::<ConfirmHistory>();
-        let deterministic_predicted_component_id =
-            world.register_component::<DeterministicPredicted>();
+        let locally_predicted_component_id = world.register_component::<LocallyPredicted>();
         let disable_rollback_component_id = world.register_component::<DisableRollback>();
         let prediction_disable_component_id = world.register_component::<PredictionDisable>();
         let interpolated_component_id = world.register_component::<Interpolated>();
@@ -289,7 +288,7 @@ impl FromWorld for PredictedArchetypes {
         for component_id in [
             predicted_component_id,
             confirm_history_component_id,
-            deterministic_predicted_component_id,
+            locally_predicted_component_id,
             disable_rollback_component_id,
             prediction_disable_component_id,
         ] {
@@ -301,7 +300,7 @@ impl FromWorld for PredictedArchetypes {
             generation: ArchetypeGeneration::initial(),
             predicted_component_id,
             confirm_history_component_id,
-            deterministic_predicted_component_id,
+            locally_predicted_component_id,
             disable_rollback_component_id,
             prediction_disable_component_id,
             interpolated_component_id,
@@ -378,7 +377,7 @@ impl PredictedArchetypes {
                 });
             cached.check_target = contains_predicted_marker
                 && archetype.contains(self.confirm_history_component_id)
-                && !archetype.contains(self.deterministic_predicted_component_id)
+                && !archetype.contains(self.locally_predicted_component_id)
                 && !has_disable_rollback
                 && !excluded_from_check
                 && has_replicated_prediction_history;

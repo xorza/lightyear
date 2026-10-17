@@ -1,6 +1,6 @@
 use crate::ping::manager::PingManager;
 use crate::plugin::SyncSystems;
-use crate::timeline::input::{InputTimelineConfig, LocalTimelineSync, PredictionWindowWait};
+use crate::timeline::input::{InputTimelineConfig, LocalTimelineSync};
 use bevy_app::{App, Last, Plugin, PostUpdate};
 use bevy_ecs::prelude::*;
 use bevy_reflect::Reflect;
@@ -160,8 +160,7 @@ pub struct SyncConfig {
     /// The default is `1.0`, which guarantees the client timeline lands at least
     /// one full tick ahead of the server timeline under zero-RTT/zero-jitter
     /// conditions (e.g. loopback). Any less than `1.0` risks the server
-    /// simulating tick `T` before the client's input for `T` has arrived,
-    /// producing a desync in deterministic replication.
+    /// simulating tick `T` before the client's input for `T` has arrived.
     pub jitter_margin: f32,
     /// Number of pings to exchange with the server before finalizing the handshake
     pub handshake_pings: u8,
@@ -340,32 +339,14 @@ impl<Remote: SyncTargetTimeline> LocalTimelineSyncPlugin<Remote> {
         }
     }
 
-    /// Apply local-clock pacing, prediction-window waiting, or normal speed for this frame.
-    ///
-    /// Prediction-window exhaustion temporarily overrides the desired synchronization speed with
-    /// zero without discarding the controller's stored correction.
+    /// Apply local-clock pacing while a client or host client is synchronized, else normal speed.
     fn update_virtual_time(
         metadata: Res<NetworkingMetadata>,
-        prediction_window_wait: Res<PredictionWindowWait>,
         local_timeline: Res<LocalTimeline>,
         sync: Res<LocalTimelineSync>,
         mut virtual_time: ResMut<Time<Virtual>>,
     ) {
-        let is_synced = sync.is_synced();
-        if is_synced && prediction_window_wait.is_waiting() && metadata.mode.is_client() {
-            virtual_time.set_relative_speed(0.0);
-            trace!(
-                target: "lightyear_debug::sync",
-                kind = "prediction_window_wait",
-                schedule = "Last",
-                sample_point = "Last",
-                prediction_depth = prediction_window_wait.prediction_depth(),
-                maximum_predicted_ticks = prediction_window_wait.maximum_predicted_ticks(),
-                confirmed_tick = ?prediction_window_wait.confirmed_tick(),
-                desired_relative_speed = sync.relative_speed(),
-                "paused virtual time at the deterministic prediction-window limit"
-            );
-        } else if is_synced
+        if sync.is_synced()
             && matches!(
                 metadata.mode,
                 NetworkTopology::Client(_) | NetworkTopology::HostClient { .. }
@@ -514,7 +495,6 @@ impl<Remote: SyncTargetTimeline> Plugin for LocalTimelineSyncPlugin<Remote> {
     fn build(&self, app: &mut App) {
         app.init_resource::<LocalTimelineSync>();
         app.init_resource::<InputTimelineConfig>();
-        app.init_resource::<PredictionWindowWait>();
 
         app.add_observer(Self::handle_connect);
         app.add_observer(Self::handle_host_client);
@@ -522,121 +502,5 @@ impl<Remote: SyncTargetTimeline> Plugin for LocalTimelineSyncPlugin<Remote> {
         app.add_observer(Self::handle_local_timeline_shift);
         app.add_systems(PostUpdate, Self::sync_timelines.in_set(SyncSystems::Sync));
         app.add_systems(Last, Self::update_virtual_time);
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::timeline::input::LocalTimelineSync;
-    use bevy_app::FixedUpdate;
-    use bevy_time::TimeUpdateStrategy;
-
-    use lightyear_core::plugin::CorePlugins;
-    use lightyear_core::tick::Tick;
-    use lightyear_core::time::{Overstep, TickDelta};
-    use lightyear_core::timeline::TimelineConfig;
-
-    #[derive(Component, Default)]
-    struct TestRemoteConfig;
-
-    #[derive(Component, Default)]
-    struct TestRemote {
-        now: TickInstant,
-        estimate: TickInstant,
-        received_packet: bool,
-    }
-
-    #[derive(Resource, Default)]
-    struct FixedRuns(u32);
-
-    #[test]
-    fn prediction_window_wait_stops_bevy_fixed_schedules() {
-        fn count_fixed_runs(mut runs: ResMut<FixedRuns>) {
-            runs.0 += 1;
-        }
-
-        let tick_duration = Duration::from_millis(10);
-        let mut app = App::new();
-        app.add_plugins((
-            CorePlugins { tick_duration },
-            LocalTimelineSyncPlugin::<TestRemote>::default(),
-        ));
-        app.insert_resource(TimeUpdateStrategy::ManualDuration(tick_duration));
-        app.init_resource::<NetworkingMetadata>();
-        app.init_resource::<FixedRuns>();
-        app.add_systems(FixedUpdate, count_fixed_runs);
-        // The client's server link is absent, so nothing samples a remote clock; the topology
-        // change resets synchronization in the first frame, before readiness is set.
-        app.world_mut().resource_mut::<NetworkingMetadata>().mode =
-            NetworkTopology::Client(Entity::PLACEHOLDER);
-        app.update();
-        app.world_mut()
-            .resource_mut::<LocalTimelineSync>()
-            .set_synced(true);
-        {
-            let mut wait = app.world_mut().resource_mut::<PredictionWindowWait>();
-            wait.update(Tick(0), None, 1);
-            wait.update(Tick(1), None, 1);
-        }
-
-        // The signal is applied in Last, after this frame's fixed loop has already run.
-        app.update();
-        let before_wait = app.world().resource::<FixedRuns>().0;
-        assert_eq!(
-            app.world().resource::<Time<Virtual>>().relative_speed(),
-            0.0
-        );
-
-        app.update();
-        assert_eq!(app.world().resource::<FixedRuns>().0, before_wait);
-
-        // Releasing the signal similarly takes effect for the following application frame.
-        app.world_mut()
-            .resource_mut::<PredictionWindowWait>()
-            .update(Tick(1), Some(Tick(1)), 1);
-        app.update();
-        assert_eq!(app.world().resource::<FixedRuns>().0, before_wait);
-        app.update();
-        assert!(app.world().resource::<FixedRuns>().0 > before_wait);
-    }
-
-    impl TimelineConfig for TestRemoteConfig {
-        type Context = ();
-        type Timeline = TestRemote;
-    }
-
-    impl NetworkTimeline for TestRemote {
-        type Config = TestRemoteConfig;
-
-        fn now(&self) -> TickInstant {
-            self.now
-        }
-
-        fn tick(&self) -> Tick {
-            self.now.tick()
-        }
-
-        fn overstep(&self) -> Overstep {
-            self.now.overstep()
-        }
-
-        fn set_now(&mut self, now: TickInstant) {
-            self.now = now;
-        }
-
-        fn apply_delta(&mut self, delta: TickDelta) {
-            self.now = self.now + delta;
-        }
-    }
-
-    impl SyncTargetTimeline for TestRemote {
-        fn current_estimate(&self) -> TickInstant {
-            self.estimate
-        }
-
-        fn received_packet(&self) -> bool {
-            self.received_packet
-        }
     }
 }

@@ -12,11 +12,8 @@ use parking_lot::RwLock;
 
 #[derive(Debug, Clone, Copy, Default, Reflect)]
 pub enum RollbackMode {
-    /// We always rollback, without comparing if there is a match with a recorded history
-    ///
-    /// - State: rollback on newly received confirmed state, without checking with any predicted history
-    ///   In this case there is no need to store a PredictionHistory
-    /// - Input: rollback on newly received input, to the latest confirmed input across all remove clients
+    /// We always rollback on newly received confirmed state, without comparing it with the
+    /// predicted history.
     ///
     /// It can be useful to always do rollbacks to test that your game can handle the CPU demand of doing the
     /// frequent rollbacks. This also unlocks perf optimizations such as not storing a PredictionHistory.
@@ -25,19 +22,14 @@ pub enum RollbackMode {
     /// We check if we should rollback by comparing with a previous value.
     Check,
     /// We don't rollback or do any checks.
-    /// - State: state rollbacks could be disabled if you're using deterministic replication and only sending inputs
-    /// - Input: input rollbacks could be disabled if you're not sending inputs from remote clients
     Disabled,
 }
 
 #[derive(Debug, Clone, Copy, Reflect)]
 /// The RollbackPolicy defines how we check and trigger rollbacks.
-///
-/// If State and Input are both enabled, State takes precedence over Input.
-/// (if there is mismatch for both, we will rollback from the state mismatch)
 pub struct RollbackPolicy {
+    /// How a confirmed state that differs from the prediction triggers a rollback.
     pub state: RollbackMode,
-    pub input: RollbackMode,
     /// Upper bound on the number of ticks we can roll back.
     ///
     /// A non-zero [`InputTimelineConfig::maximum_predicted_ticks`] can lower the effective bound.
@@ -49,7 +41,6 @@ impl Default for RollbackPolicy {
     fn default() -> Self {
         Self {
             state: RollbackMode::Check,
-            input: RollbackMode::Check,
             max_rollback_ticks: 20,
         }
     }
@@ -69,14 +60,6 @@ impl RollbackPolicy {
             self.max_rollback_ticks.min(maximum_predicted_ticks)
         }
     }
-
-    /// Returns true if we don't need to store a prediction history.
-    ///
-    /// PredictionHistory is not needed if we always rollback on new states
-    pub fn no_prediction_history(&self) -> bool {
-        !matches!(self.state, RollbackMode::Disabled)
-            && matches!(self.input, RollbackMode::Disabled)
-    }
 }
 
 /// Application-global state that enables prediction and rollback.
@@ -92,79 +75,13 @@ pub struct PredictionManager {
     pub rollback_policy: RollbackPolicy,
     /// Configuration for smoothing the rollback error over time
     pub correction_policy: CorrectionPolicy,
-    /// For input-based rollback: tracks earliest mismatch across remote clients
-    pub earliest_mismatch_input: EarliestMismatchedInput,
-
     #[doc(hidden)]
-    pub deterministic_despawn: Vec<(Tick, Entity)>,
+    pub local_despawn: Vec<(Tick, Entity)>,
     #[doc(hidden)]
-    pub deterministic_skip_despawn: Vec<(Tick, Entity)>,
+    pub local_skip_despawn: Vec<(Tick, Entity)>,
     #[doc(hidden)]
     #[reflect(ignore)]
     pub rollback: RwLock<RollbackState>,
-}
-
-/// Application-global frontier of confirmed input across all remote players.
-///
-/// This is a resource because the rollback decision combines every remote input stream in the
-/// application; it does not belong to any one network link.
-#[derive(Resource, Debug, Reflect)]
-pub struct LastConfirmedInput {
-    /// Current frame's aggregate, updated via [`AtomicTick::set_if_lower`] to track the minimum
-    /// last-confirmed tick across all remote clients. Reset to a high value each frame by
-    /// [`reset_input_rollback_tracker`] so the minimum is computed correctly.
-    ///
-    /// [`AtomicTick::set_if_lower`]: lightyear_core::tick::AtomicTick::set_if_lower
-    /// [`reset_input_rollback_tracker`]: crate::rollback::reset_input_rollback_tracker
-    pub tick: lightyear_core::tick::AtomicTick,
-    /// Completed aggregate from the previous frame.
-    ///
-    /// Rollback uses this explicitly so inputs received in the current frame are replayed from the
-    /// frontier that was known before those inputs arrived.
-    pub previous_frame_tick: Tick,
-    pub received_any_messages: bevy_platform::sync::atomic::AtomicBool,
-    /// Set to true if the current aggregate contains inputs from all remote clients.
-    pub received_for_all_clients: bool,
-}
-
-impl Default for LastConfirmedInput {
-    fn default() -> Self {
-        Self {
-            tick: lightyear_core::tick::AtomicTick::new_max(),
-            previous_frame_tick: Tick(u32::MAX),
-            received_any_messages: bevy_platform::sync::atomic::AtomicBool::new(false),
-            received_for_all_clients: false,
-        }
-    }
-}
-
-impl LastConfirmedInput {
-    /// Returns true if we've received any confirmed input from remote clients this frame
-    pub fn received_input(&self) -> bool {
-        self.received_any_messages
-            .load(bevy_platform::sync::atomic::Ordering::Relaxed)
-    }
-
-    /// Return the last confirmed input tick, or None if we haven't received any confirmed input yet.
-    pub fn get(&self) -> Option<Tick> {
-        match self.tick.get() {
-            tick if tick == Tick(u32::MAX) => None,
-            tick => Some(tick),
-        }
-    }
-
-    /// Return the confirmed-input frontier completed during the previous frame.
-    pub fn previous_frame(&self) -> Option<Tick> {
-        match self.previous_frame_tick {
-            tick if tick == Tick(u32::MAX) => None,
-            tick => Some(tick),
-        }
-    }
-
-    /// Preserve the current aggregate for systems that must consume the previous frame's view.
-    pub fn finalize_frame(&mut self) {
-        self.previous_frame_tick = self.tick.get();
-    }
 }
 
 /// Stores metadata related to state-based prediction.
@@ -207,8 +124,8 @@ impl StateRollbackMetadata {
     /// Request a one-shot rollback from `tick`, regardless of the
     /// `rollback_policy.state` mode.
     ///
-    /// Intended for scenarios where an external system (e.g. late-join
-    /// catch-up) has deposited confirmed state at a specific tick and
+    /// Intended for scenarios where an external system (e.g. a snapshot an app
+    /// applies to a late-joining client) has deposited confirmed state at a specific tick and
     /// needs the simulation to re-run from there. Subsequent calls within the
     /// same frame take the earliest tick.
     pub fn request_forced_rollback(&mut self, tick: Tick) {
@@ -273,108 +190,13 @@ impl StateRollbackMetadata {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use lightyear_sync::timeline::input::InputDelayConfig;
-
-    #[test]
-    fn effective_max_rollback_ticks_respects_prediction_limit() {
-        let mut policy = RollbackPolicy::default();
-        assert_eq!(policy.max_rollback_ticks, 20);
-
-        let balanced =
-            InputTimelineConfig::default().with_input_delay(InputDelayConfig::balanced());
-        assert_eq!(policy.effective_max_rollback_ticks(&balanced), 7);
-
-        policy.max_rollback_ticks = 5;
-        assert_eq!(policy.effective_max_rollback_ticks(&balanced), 5);
-
-        let lockstep =
-            InputTimelineConfig::default().with_input_delay(InputDelayConfig::no_prediction());
-        assert_eq!(policy.effective_max_rollback_ticks(&lockstep), 5);
-    }
-
-    #[test]
-    fn last_confirmed_input_default_starts_unset() {
-        let mut last_confirmed_input = LastConfirmedInput::default();
-
-        assert_eq!(last_confirmed_input.tick.get(), Tick(u32::MAX));
-        assert_eq!(last_confirmed_input.get(), None);
-        assert_eq!(last_confirmed_input.previous_frame(), None);
-        assert!(!last_confirmed_input.received_input());
-
-        last_confirmed_input.tick.set_if_lower(Tick(12));
-        last_confirmed_input.received_for_all_clients = true;
-        last_confirmed_input.finalize_frame();
-        assert_eq!(last_confirmed_input.previous_frame(), Some(Tick(12)));
-    }
-
-    #[test]
-    fn confirmed_tick_advancement_uses_last_processed_confirmed_tick() {
-        let mut metadata = StateRollbackMetadata::default();
-        assert!(metadata.has_confirmed_tick_advanced(Tick(10)));
-
-        metadata.set_last_processed_confirmed_tick(Tick(10));
-        assert!(!metadata.has_confirmed_tick_advanced(Tick(10)));
-        assert!(!metadata.has_confirmed_tick_advanced(Tick(9)));
-        assert!(metadata.has_confirmed_tick_advanced(Tick(11)));
-    }
-
-    #[test]
-    fn server_mutate_last_tick_can_be_newer_than_latest_complete_tick() {
-        use bevy_replicon::client::server_mutate_ticks::ServerMutateTicks;
-        use bevy_replicon::prelude::RepliconTick;
-
-        let complete_tick = RepliconTick::new(9);
-        let incomplete_tick = RepliconTick::new(10);
-
-        let mut server_mutate_ticks = ServerMutateTicks::default();
-        assert!(server_mutate_ticks.confirm(complete_tick, 1));
-        assert!(!server_mutate_ticks.confirm(incomplete_tick, 2));
-
-        assert_eq!(server_mutate_ticks.last_tick(), incomplete_tick);
-        assert!(server_mutate_ticks.contains(complete_tick));
-        assert!(!server_mutate_ticks.contains(incomplete_tick));
-    }
-}
-
-/// Store the earliest mismatched input across all remote clients.
-#[derive(Debug, Reflect)]
-pub struct EarliestMismatchedInput {
-    /// Initialized to `Tick::MAX` so the first [`AtomicTick::set_if_lower`] call wins.
-    /// Updated via [`AtomicTick::set_if_lower`] to track the minimum mismatch tick
-    /// across all remote clients.
-    ///
-    /// [`AtomicTick::set_if_lower`]: lightyear_core::tick::AtomicTick::set_if_lower
-    pub tick: lightyear_core::tick::AtomicTick,
-    pub has_mismatches: bevy_platform::sync::atomic::AtomicBool,
-}
-
-impl Default for EarliestMismatchedInput {
-    fn default() -> Self {
-        Self {
-            tick: lightyear_core::tick::AtomicTick::new_max(),
-            has_mismatches: bevy_platform::sync::atomic::AtomicBool::new(false),
-        }
-    }
-}
-
-impl EarliestMismatchedInput {
-    pub fn has_mismatches(&self) -> bool {
-        self.has_mismatches
-            .load(bevy_platform::sync::atomic::Ordering::Relaxed)
-    }
-}
-
 impl Default for PredictionManager {
     fn default() -> Self {
         Self {
             rollback_policy: RollbackPolicy::default(),
             correction_policy: CorrectionPolicy::default(),
-            earliest_mismatch_input: EarliestMismatchedInput::default(),
-            deterministic_skip_despawn: Vec::default(),
-            deterministic_despawn: Vec::default(),
+            local_skip_despawn: Vec::default(),
+            local_despawn: Vec::default(),
             rollback: RwLock::new(RollbackState::Default),
         }
     }
@@ -409,5 +231,56 @@ impl PredictionManager {
     /// Set the rollback state to `ShouldRollback` with the given tick.
     pub fn set_rollback_tick(&self, tick: Tick) {
         *self.rollback.write().deref_mut() = RollbackState::RollbackStart(tick)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use lightyear_sync::timeline::input::InputDelayConfig;
+
+    #[test]
+    fn effective_max_rollback_ticks_respects_prediction_limit() {
+        let mut policy = RollbackPolicy::default();
+        assert_eq!(policy.max_rollback_ticks, 20);
+
+        let balanced =
+            InputTimelineConfig::default().with_input_delay(InputDelayConfig::balanced());
+        assert_eq!(policy.effective_max_rollback_ticks(&balanced), 7);
+
+        policy.max_rollback_ticks = 5;
+        assert_eq!(policy.effective_max_rollback_ticks(&balanced), 5);
+
+        let lockstep =
+            InputTimelineConfig::default().with_input_delay(InputDelayConfig::no_prediction());
+        assert_eq!(policy.effective_max_rollback_ticks(&lockstep), 5);
+    }
+
+    #[test]
+    fn confirmed_tick_advancement_uses_last_processed_confirmed_tick() {
+        let mut metadata = StateRollbackMetadata::default();
+        assert!(metadata.has_confirmed_tick_advanced(Tick(10)));
+
+        metadata.set_last_processed_confirmed_tick(Tick(10));
+        assert!(!metadata.has_confirmed_tick_advanced(Tick(10)));
+        assert!(!metadata.has_confirmed_tick_advanced(Tick(9)));
+        assert!(metadata.has_confirmed_tick_advanced(Tick(11)));
+    }
+
+    #[test]
+    fn server_mutate_last_tick_can_be_newer_than_latest_complete_tick() {
+        use bevy_replicon::client::server_mutate_ticks::ServerMutateTicks;
+        use bevy_replicon::prelude::RepliconTick;
+
+        let complete_tick = RepliconTick::new(9);
+        let incomplete_tick = RepliconTick::new(10);
+
+        let mut server_mutate_ticks = ServerMutateTicks::default();
+        assert!(server_mutate_ticks.confirm(complete_tick, 1));
+        assert!(!server_mutate_ticks.confirm(incomplete_tick, 2));
+
+        assert_eq!(server_mutate_ticks.last_tick(), incomplete_tick);
+        assert!(server_mutate_ticks.contains(complete_tick));
+        assert!(!server_mutate_ticks.contains(incomplete_tick));
     }
 }

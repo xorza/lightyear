@@ -381,9 +381,8 @@ impl TimelinePlugin {
         if rollback.is_some() {
             return;
         }
-        // A deterministic prediction-window wait pauses `Time<Virtual>` so FixedUpdate cannot
-        // advance beyond the rollback window. Its delta is already zero in that state; avoid
-        // dividing by the zero relative speed while reconstructing the unscaled frame delta.
+        // A paused `Time<Virtual>` has a zero delta; avoid dividing by its zero relative speed
+        // while reconstructing the unscaled frame delta.
         if time.relative_speed() == 0.0 {
             return;
         }

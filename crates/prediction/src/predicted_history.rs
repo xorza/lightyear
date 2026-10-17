@@ -8,7 +8,7 @@ use crate::archetypes::{
     CachedDiffComponent, CachedPredictionComponent, PruneDiffHistoryWorld, SnapToConfirmedWorld,
 };
 use crate::registry::PredictionRegistry;
-use crate::rollback::{CatchUpGated, DeterministicPredicted};
+use crate::rollback::LocallyPredicted;
 use crate::{Predicted, SyncComponent, manager::PredictionManager};
 use bevy_ecs::archetype::Archetype;
 use bevy_ecs::component::ComponentIdFor;
@@ -126,7 +126,7 @@ pub(crate) fn update_prediction_history<T: Component + Clone>(
             history.add_predicted(tick, Some(component.deref().clone()));
             // Structured per-entity snapshot — `entity` is included so queries
             // against the JSONL can segment history growth/reset by entity
-            // (e.g. to tell a deterministic-only ball's history apart from a
+            // (e.g. to tell a locally predicted entity's history apart from a
             // just-arrived replicated player's history).
             trace!(
                 target: "lightyear_debug::prediction",
@@ -149,7 +149,7 @@ pub(crate) fn update_prediction_history<T: Component + Clone>(
 /// Runs once per frame in `PostUpdate`: after the fixed loop has recorded history
 /// and after the rollback check for the current frame, so snapshots received in
 /// `PreUpdate` remain visible to the rollback decision, including forced
-/// catch-up rollbacks.
+/// rollbacks.
 ///
 /// The cut never passes the latest completed checkpoint: `clear_until_tick` stores
 /// the state at the cut as authoritative there, which past that checkpoint would be a
@@ -329,41 +329,24 @@ pub(crate) fn apply_component_removal_predicted<C: Component>(
     }
 }
 
-/// When `C` or one of [`Predicted`], [`PreSpawned`], [`DeterministicPredicted`], or
-/// [`CatchUpGated`] is added to an entity, ensure [`PredictionHistory<C>`] is present for predicted
-/// entities and resource entities. [`IsResource`] is an eligibility check rather than a trigger:
-/// `Add<C>` already fires when a resource is inserted, and triggering on every `IsResource`
-/// addition would wake this observer for unrelated resource types.
-///
-/// [`CatchUpGated`] always needs [`PredictionHistory<C>`], even while `C` is absent because its
-/// replicated value is still gated in [`ConfirmedHistory<C>`]. Prediction history is also the
-/// component's rollback-membership marker, so it must be present for the catch-up rollback to
-/// materialize that confirmed value as the live component.
+/// When `C` or one of [`Predicted`], [`PreSpawned`] or [`LocallyPredicted`] is added to an
+/// entity, ensure [`PredictionHistory<C>`] is present for predicted entities and resource
+/// entities. [`IsResource`] is an eligibility check rather than a trigger: `Add<C>` already fires
+/// when a resource is inserted, and triggering on every `IsResource` addition would wake this
+/// observer for unrelated resource types.
 pub(crate) fn add_prediction_history<C: Component + Clone>(
-    trigger: On<
-        Add,
-        (
-            C,
-            Predicted,
-            PreSpawned,
-            DeterministicPredicted,
-            CatchUpGated,
-        ),
-    >,
+    trigger: On<Add, (C, Predicted, PreSpawned, LocallyPredicted)>,
     query: Query<
         (),
-        Or<(
-            With<CatchUpGated>,
-            (
-                With<C>,
-                Or<(
-                    With<Predicted>,
-                    With<PreSpawned>,
-                    With<DeterministicPredicted>,
-                    With<IsResource>,
-                )>,
-            ),
-        )>,
+        (
+            With<C>,
+            Or<(
+                With<Predicted>,
+                With<PreSpawned>,
+                With<LocallyPredicted>,
+                With<IsResource>,
+            )>,
+        ),
     >,
     mut commands: Commands,
 ) {
@@ -429,16 +412,12 @@ pub(crate) fn backfill_confirmed_history_on_predicted<C: SyncComponent>(
 }
 
 pub(crate) fn add_history_diff_receiver<C: SyncComponent + RepliconDiffable>(
-    trigger: On<Add, (C, Predicted, PreSpawned, DeterministicPredicted)>,
+    trigger: On<Add, (C, Predicted, PreSpawned, LocallyPredicted)>,
     query: Query<
         (),
         (
             With<C>,
-            Or<(
-                With<Predicted>,
-                With<PreSpawned>,
-                With<DeterministicPredicted>,
-            )>,
+            Or<(With<Predicted>, With<PreSpawned>, With<LocallyPredicted>)>,
         ),
     >,
     mut commands: Commands,

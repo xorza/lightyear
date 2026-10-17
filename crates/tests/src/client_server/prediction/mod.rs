@@ -37,7 +37,7 @@ pub(crate) fn request_forced_rollback_at_completed_tick(
 }
 
 pub(crate) fn trigger_state_rollback(stepper: &mut ClientServerStepper, tick: Tick) {
-    stepper.client_app().insert_resource(Rollback::FromState);
+    stepper.client_app().insert_resource(Rollback);
     stepper
         .client_app()
         .world()
