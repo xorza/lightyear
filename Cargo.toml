@@ -2,29 +2,14 @@
 resolver = "3"
 members = [
   "crates/core/lightyear",
-  "crates/io/aeronet",
   "crates/io/crossbeam",
   "crates/io/link",
-  "crates/io/udp",
-  "crates/io/websocket",
-  "crates/io/webtransport",
   "crates/connection/connection",
-  "crates/connection/p2p",
   "crates/connection/raw_connection",
-  "crates/connection/netcode",
-  "crates/connection/steam",
   "crates/core/core",
   "crates/core/sync",
   "crates/core/utils",
   "crates/core/frame_interpolation",
-  "crates/inputs/inputs",
-  "crates/inputs/inputs_native",
-  "crates/platform/web",
-  "crates/integration/avian2d",
-  "crates/integration/avian3d",
-  "crates/inputs/input_bei",
-  "crates/inputs/inputs_leafwing",
-  "crates/deterministic/deterministic_replication",
   "crates/replication/replication",
   "crates/replication/prediction",
   "crates/replication/interpolation",
@@ -37,9 +22,6 @@ members = [
   "crates/tests",
   # internal
   "benches/*",
-  "certificates",
-  "demos/*",
-  "examples/*",
 ]
 default-members = ["crates/core/lightyear"]
 exclude = []
@@ -63,7 +45,6 @@ opt-level = 3
 opt-level = 1
 
 # Here is a configuration for the most aggressive optimizations possible
-# Read this when trying to optimise WASM build: https://bevy-cheatbook.github.io/platforms/wasm/size-opt.html
 [profile.release]
 lto = true
 opt-level = 3
@@ -73,24 +54,10 @@ debug = false
 
 
 [workspace.dependencies]
-lightyear_aeronet = { path = "crates/io/aeronet", version = "0.30.1", default-features = false }
-lightyear_avian2d = { path = "crates/integration/avian2d", version = "0.30.1", default-features = false, features = [
-  "2d",
-] }
-lightyear_avian3d = { path = "crates/integration/avian3d", version = "0.30.1", default-features = false, features = [
-  "3d",
-] }
-lightyear_netcode = { path = "crates/connection/netcode", version = "0.30.1", default-features = false }
 lightyear_connection = { path = "crates/connection/connection", version = "0.30.1", default-features = false }
-lightyear_p2p = { path = "crates/connection/p2p", version = "0.30.1", default-features = false }
 lightyear_core = { path = "crates/core/core", version = "0.30.1", default-features = false }
 lightyear_crossbeam = { path = "crates/io/crossbeam", version = "0.30.1", default-features = false }
-lightyear_deterministic_replication = { path = "crates/deterministic/deterministic_replication", version = "0.30.1", default-features = false }
 lightyear_frame_interpolation = { path = "crates/core/frame_interpolation", version = "0.30.1", default-features = false }
-lightyear_inputs = { path = "crates/inputs/inputs", version = "0.30.1", default-features = false }
-lightyear_inputs_bei = { path = "crates/inputs/input_bei", version = "0.30.1", default-features = false }
-lightyear_inputs_leafwing = { path = "crates/inputs/inputs_leafwing", version = "0.30.1", default-features = false }
-lightyear_inputs_native = { path = "crates/inputs/inputs_native", version = "0.30.1", default-features = false }
 lightyear_interpolation = { path = "crates/replication/interpolation", version = "0.30.1", default-features = false }
 lightyear_messages = { path = "crates/transport/messages", version = "0.30.1", default-features = false }
 lightyear_metrics = { path = "crates/tools/metrics", version = "0.30.1", default-features = false }
@@ -101,26 +68,14 @@ lightyear_link = { path = "crates/io/link", version = "0.30.1", default-features
 lightyear_raw_connection = { path = "crates/connection/raw_connection", version = "0.30.1", default-features = false }
 lightyear_replication = { path = "crates/replication/replication", version = "0.30.1", default-features = false }
 lightyear_serde = { path = "crates/transport/serde", version = "0.30.1", default-features = false }
-lightyear_steam = { path = "crates/connection/steam", version = "0.30.1", default-features = false }
 lightyear_sync = { path = "crates/core/sync", version = "0.30.1", default-features = false }
 lightyear_tools = { path = "crates/tools/tools", version = "0.30.1", default-features = false }
-lightyear_udp = { path = "crates/io/udp", version = "0.30.1", default-features = false }
-lightyear_ui = { path = "crates/tools/ui", version = "0.30.1", default-features = false }
 lightyear_utils = { path = "crates/core/utils", version = "0.30.1", default-features = false }
 lightyear_tests = { path = "crates/tests", version = "0.30.1", default-features = false }
-lightyear_web = { path = "crates/platform/web", version = "0.30.1", default-features = false }
-lightyear_webtransport = { path = "crates/io/webtransport", version = "0.30.1", default-features = false }
-lightyear_websocket = { path = "crates/io/websocket", version = "0.30.1", default-features = false }
-
-# examples
-lightyear_examples_common = { path = "./examples/common", version = "0.30.1", default-features = false }
 
 # utils
-anyhow = { version = "1.0.75", features = [] }
 clap = { version = "4.5.4", features = ["derive"] }
 chrono = "0.4.38"
-cfg-if = "1.0"
-dashmap = "6.1.0"
 fixed = { version = "1.29", features = ["serde"] }
 fixedbitset = "0.5.7"
 governor = "0.10"
@@ -136,12 +91,9 @@ seahash = "4.1.0"
 smallvec = { version = "1", features = ["union", "const_generics", "serde"] }
 variadics_please = "2.0.0"
 
-# no_std
-no_std_io2 = { version = "0.9", features = ["alloc"] }
-
 # serialization
 postcard = { version = "1.1.3", default-features = false }
-bytes = { version = "1.8", default-features = false, features = ["serde"] }
+bytes = { version = "1.8", features = ["serde"] }
 lz4_flex = { version = "0.14.0", default-features = false, features = [
   "safe-encode",
   "safe-decode",
@@ -152,9 +104,6 @@ serde = { version = "1", default-features = false, features = [
   "derive",
 ] }
 serde_json = "1"
-
-# netcode
-chacha20poly1305 = { version = "0.10" }
 
 # tracing
 test-log = { version = "0.2.17", default-features = false, features = [
@@ -177,18 +126,8 @@ crossbeam-channel = { version = "0.5.15", features = [] }
 metrics = "0.24"
 metrics-util = "0.20"
 
-# transport
-aeronet_webtransport = { version = "0.21" }
-aeronet_websocket = { version = "0.21" }
-aeronet_steam = { version = "0.21" }
-wtransport = "0.7.1"
+# io
 aeronet_io = { version = "0.21" }
-# we don't need any tokio features, we use only use the tokio channels
-tokio = { version = "1.45", features = [
-  "sync",
-  "macros",
-], default-features = false }
-async-compat = "0.2"
 
 # dev deps
 mock_instant = "0.6"
@@ -197,7 +136,6 @@ dhat = "0.3.3"
 stats_alloc = "0.1.10"
 
 # Bevy
-# (the full app is used for examples)
 bevy = { version = "0.19", default-features = false, features = [
   "bevy_state",
   "bevy_log",
@@ -214,12 +152,11 @@ bevy_derive = { version = "0.19", default-features = false }
 bevy_log = { version = "0.19", default-features = false }
 bevy_diagnostic = { version = "0.19", default-features = false }
 bevy_color = { version = "0.19", default-features = false }
-bevy_ecs = { version = "0.19", default-features = false }
-bevy_input = { version = "0.19", default-features = false }
-bevy_math = { version = "0.19", default-features = false }
-bevy_platform = { version = "0.19", default-features = false }
+bevy_ecs = { version = "0.19", default-features = false, features = ["std"] }
+bevy_math = { version = "0.19", default-features = false, features = ["std"] }
+bevy_platform = { version = "0.19", default-features = false, features = ["std"] }
 bevy_ptr = { version = "0.19", default-features = false }
-bevy_reflect = { version = "0.19", default-features = false }
+bevy_reflect = { version = "0.19", default-features = false, features = ["std"] }
 bevy_state = { version = "0.19", default-features = false }
 bevy_text = { version = "0.19", default-features = false }
 bevy_time = { version = "0.19", default-features = false }
@@ -228,55 +165,13 @@ bevy_ui = { version = "0.19", default-features = false }
 bevy_utils = { version = "0.19", default-features = false, features = [
   "debug",
 ] }
-bevy_winit = { version = "0.19", default-features = false }
 tracy-client = { version = "0.18" }
 
-# input
-bevy_enhanced_input = { version = "0.26", default-features = false, features = [
-  "serialize",
-] }
-leafwing-input-manager = { version = "0.21", default-features = false, features = [
-  "keyboard",
-] }
 # replication
 bevy_replicon = { version = "0.44.1", default-features = false, features = [
   "client",
   "server",
 ] }
-
-# physics
-avian2d = { version = "0.7", default-features = false }
-avian3d = { version = "0.7", default-features = false }
-obvhs = { version = "0.3" }
-# Avian 0.7's 2D `serialize` feature derives Serde for an ArrayVec without enabling this feature.
-arrayvec = { version = "0.7", features = ["serde"] }
-bevy_transform_interpolation = { version = "0.5", default-features = false }
-
-# gui debug ui
-bevy-inspector-egui = { version = "0.37", default-features = false, features = [
-  "bevy_pbr",
-  "bevy_image",
-  "bevy_render",
-  "egui_open_url",
-] }
-bevy_egui = { version = "0.40", default-features = false, features = [
-  "open_url",
-  "default_fonts",
-  "render",
-] }
-egui_extras = "0.34"
-
-# WASM things
-console_error_panic_hook = "0.1.7"
-web-time = "1.1.0"
-# Direct feature shims for transitive crates that still span multiple getrandom versions.
-getrandom = { version = "0.3", features = [
-  "wasm_js", # feature 'js' is required for wasm, see https://github.com/rust-random/getrandom?tab=readme-ov-file#webassembly-support
-] }
-getrandom_02 = { version = "0.2", features = ["js"], package = "getrandom" }
-getrandom_04 = { version = "0.4", features = [
-  "wasm_js",
-], package = "getrandom" }
 
 [workspace.lints.rust]
 dead_code = "allow"
@@ -288,6 +183,3 @@ missing_transmute_annotations = "allow"
 len_without_is_empty = "allow"
 too_many_arguments = "allow"
 module_inception = "allow"
-alloc_instead_of_core = "warn"
-std_instead_of_alloc = "warn"
-std_instead_of_core = "warn"

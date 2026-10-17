@@ -1,4 +1,3 @@
-use alloc::vec::Vec;
 use bevy_ecs::entity::{Entity, EntityHashSet};
 use bevy_platform::collections::{HashMap, HashSet};
 use bevy_reflect::Reflect;
@@ -825,7 +824,6 @@ impl<T: Eq + Hash + Copy> Target<T> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use alloc::vec;
     use lightyear_serde::writer::Writer;
 
     #[test]
@@ -844,7 +842,7 @@ mod tests {
     }
 
     fn peer(id: u64) -> PeerId {
-        PeerId::Netcode(id)
+        PeerId::Entity(id)
     }
 
     fn assert_entities(actual: &EntityHashSet, expected: &[Entity]) {

@@ -20,15 +20,14 @@ fn test_disconnection() {
             .is_err()
     );
 }
-
-#[cfg(feature = "std")]
 mod disconnection_log_tests {
     use crate::stepper::*;
-    use alloc::sync::Arc;
     use bevy::ecs::schedule::{Schedules, SingleThreadedExecutor};
     use core::sync::atomic::{AtomicUsize, Ordering};
+    use lightyear_connection::client::{Connected, Disconnected};
     use lightyear_connection::server::Stop;
     use lightyear_link::{UnlinkReason, Unlinked};
+    use std::sync::Arc;
     use tracing::{Event, Level, Subscriber};
     use tracing_subscriber::layer::Context;
     use tracing_subscriber::{Layer, prelude::*};
@@ -116,12 +115,10 @@ mod disconnection_log_tests {
 
     /// Regression test for https://github.com/cBournhonesque/lightyear/issues/949.
     ///
-    /// Aeronet translates an abruptly closed WebTransport session into `Unlinked`. Inject that
-    /// lifecycle signal directly so the test does not wait for the real QUIC idle timeout. The
-    /// server must remove the client after Netcode's simulated-time timeout without leaving a
-    /// stale sender that emits errors on later frames.
+    /// An IO layer reports an abruptly closed session as `Unlinked`. The server must disconnect the
+    /// client without leaving a stale sender that emits errors on later frames.
     #[test]
-    fn abrupt_webtransport_disconnection_does_not_emit_error_logs() {
+    fn abrupt_unlink_does_not_emit_error_logs() {
         with_lightyear_error_capture(|capture| {
             let mut stepper = ClientServerStepper::from_config(StepperConfig::single());
             use_single_threaded_schedules(&mut stepper);
@@ -135,25 +132,16 @@ mod disconnection_log_tests {
                 .world_mut()
                 .entity_mut(server_client)
                 .insert(Unlinked {
-                    reason: UnlinkReason::TransportError(
-                        "WebTransport connection timed out".to_string(),
-                    ),
+                    reason: UnlinkReason::TransportError("connection timed out".to_string()),
                 });
 
-            // Netcode's default client timeout is three seconds. Simulated stepper time lets us
-            // cross it immediately, without sleeping for the real WebTransport idle timeout.
-            stepper.frame_step(320);
-            assert!(
-                stepper
-                    .server_app
-                    .world()
-                    .get_entity(server_client)
-                    .is_err(),
-                "server-side client entity survived the simulated disconnect timeout"
-            );
+            stepper.frame_step(1);
+            let server_client = stepper.server_app.world().entity(server_client);
+            assert!(server_client.contains::<Disconnected>());
+            assert!(!server_client.contains::<Connected>());
 
-            // Keep running after cleanup so a stale higher-level sender cannot hide behind the
-            // disconnection frame.
+            // Keep running after the disconnection so a stale higher-level sender cannot hide
+            // behind the disconnection frame.
             stepper.frame_step(20);
             assert_no_lightyear_errors(capture);
         });

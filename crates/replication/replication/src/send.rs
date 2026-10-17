@@ -9,7 +9,6 @@
 //! Each link entity (the entity representing a connection to a remote peer)
 //! needs a [`ReplicationSender`] component to enable outgoing replication
 //! through that link.
-use alloc::vec::Vec;
 use bevy_app::prelude::*;
 use bevy_ecs::lifecycle::HookContext;
 use bevy_ecs::prelude::*;
@@ -153,8 +152,8 @@ pub struct ReplicationSender;
 /// let mut app = App::new();
 /// app.add_plugins(SendPlugin);
 ///
-/// let alice = PeerId::Netcode(1);
-/// let bob = PeerId::Netcode(2);
+/// let alice = PeerId::Entity(1);
+/// let bob = PeerId::Entity(2);
 ///
 /// // Spawn an entity replicated to Alice only, and `Replicating` is added
 /// // automatically as a required component.

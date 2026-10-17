@@ -3,7 +3,6 @@ use crate::channel::registry::ChannelId;
 use crate::channel::registry::ChannelKind;
 use crate::packet::header::PacketHeader;
 use crate::packet::message::{FragmentIndex, MessageId, SendMessageKey};
-use alloc::vec::Vec;
 use bytes::BytesMut;
 use lightyear_link::DEFAULT_MTU;
 use lightyear_serde::varint::varint_len;

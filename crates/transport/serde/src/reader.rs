@@ -1,8 +1,7 @@
 use crate::SerializationError;
 use crate::varint::varint_parse_len;
-use alloc::vec::Vec;
 use bytes::{Buf, Bytes};
-use no_std_io2::io::{Cursor, Error, ErrorKind, Read, Result, Seek, SeekFrom};
+use std::io::{Cursor, Error, ErrorKind, Read, Result, Seek, SeekFrom};
 
 #[derive(Clone)]
 pub struct Reader(Cursor<Bytes>);
@@ -228,9 +227,7 @@ impl<T: Read> ReadVarInt for T {}
 mod tests {
     use super::*;
     use crate::writer::WriteInteger;
-    use no_std_io2::io;
-
-    use alloc::vec;
+    use std::io;
 
     #[test]
     fn test_read_integer() {

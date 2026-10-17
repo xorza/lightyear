@@ -986,7 +986,7 @@ mod tests {
 
         app.world_mut().run_system_once(prepare_rollback).unwrap();
         app.world_mut().flush();
-        let entities: alloc::vec::Vec<Entity> = app
+        let entities: std::vec::Vec<Entity> = app
             .world_mut()
             .query_filtered::<Entity, With<PredictionHistory<TestPos>>>()
             .iter(app.world())
@@ -1195,7 +1195,7 @@ mod tests {
         app.world_mut().run_system_once(prepare_rollback).unwrap();
         app.world_mut().flush();
         // Replay steps the simulation forward to the replayed value.
-        let entities: alloc::vec::Vec<Entity> = app
+        let entities: std::vec::Vec<Entity> = app
             .world_mut()
             .query_filtered::<Entity, With<PredictionHistory<TestPos>>>()
             .iter(app.world())

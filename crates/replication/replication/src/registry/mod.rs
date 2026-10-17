@@ -1,6 +1,3 @@
-#[cfg(feature = "deterministic")]
-pub mod deterministic;
-
 pub mod replication;
 
 use bevy_ecs::component::ComponentId;
@@ -169,8 +166,6 @@ pub struct ComponentRegistry {
 #[derive(Debug, Clone)]
 pub struct ComponentMetadata {
     pub component_id: ComponentId,
-    #[cfg(feature = "deterministic")]
-    pub deterministic: Option<deterministic::DeterministicFns>,
 }
 
 impl ComponentRegistry {
@@ -200,11 +195,7 @@ impl ComponentRegistry {
             .insert(component_id, component_kind);
         self.component_metadata_map
             .entry(component_kind)
-            .or_insert(ComponentMetadata {
-                component_id,
-                #[cfg(feature = "deterministic")]
-                deterministic: None,
-            });
+            .or_insert(ComponentMetadata { component_id });
     }
 
     pub fn finish(&mut self) -> RegistryHash {

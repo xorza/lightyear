@@ -6,7 +6,6 @@ It also introduces helpers to setup a Client-Server architecture.
 
 This crates provide concepts that are only useful for a client-server architecture (client/server).
 */
-#![no_std]
 // TODO: maybe lightyear_connection only stores primitives for a long-running Connection (ConnectionError, etc.)
 //  on top of a Link
 //  And client-server logic is only in lightyear_client, lightyear_server, lightyear_shared
@@ -17,9 +16,6 @@ This crates provide concepts that are only useful for a client-server architectu
 //   or in lightyear_direction/client + lightyear_direction/server?
 //   Maybe each crate can have #[client] and #[server] features for client-server specific stuff
 //   And then lightyear_client just calls the relevant functions from all the other crates (inputs, etc.)
-
-extern crate alloc;
-extern crate core;
 
 use bevy_app::{App, Plugin};
 use bevy_ecs::schedule::SystemSet;

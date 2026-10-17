@@ -695,7 +695,6 @@ impl<Remote: SyncTargetTimeline> Plugin for LocalTimelineSyncPlugin<Remote> {
 mod tests {
     use super::*;
     use crate::timeline::input::{InputTimelineConfig, LocalTimelineSync};
-    use alloc::vec::Vec;
     use bevy_app::{FixedUpdate, PostUpdate};
     use bevy_time::TimeUpdateStrategy;
     use lightyear_core::id::{PeerId, RemoteId};

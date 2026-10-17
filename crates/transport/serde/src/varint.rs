@@ -32,8 +32,7 @@ pub const fn varint_parse_len(first: u8) -> usize {
 mod tests {
     use crate::reader::ReadVarInt;
     use crate::writer::WriteInteger;
-    use alloc::vec;
-    use no_std_io2::io;
+    use std::io;
 
     #[test]
     fn test_varint_len_1() {

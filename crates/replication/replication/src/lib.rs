@@ -102,11 +102,6 @@
 //! [`RoomPlugin`]: crate::visibility::room::RoomPlugin
 //! [`ControlledBy`]: crate::control::ControlledBy
 //! [`PreSpawned`]: crate::prespawn::PreSpawned
-#![no_std]
-
-extern crate alloc;
-#[cfg(feature = "std")]
-extern crate std;
 
 use bevy_app::PluginGroupBuilder;
 use bevy_app::prelude::Plugin;

@@ -10,11 +10,7 @@ use lightyear::prelude::{
 };
 use lightyear_prediction::predicted_history::PredictionHistory;
 use lightyear_tests::protocol::{Channel1, CompFull, StringMessage};
-use lightyear_tests::stepper::{
-    ClientServerStepper, ClientType, IoType, ServerType, StepperConfig,
-};
-use lightyear_udp::UdpIo;
-use lightyear_udp::server::ServerUdpIo;
+use lightyear_tests::stepper::{ClientServerStepper, ClientType, StepperConfig};
 use stats_alloc::{INSTRUMENTED_SYSTEM, Region, Stats, StatsAlloc};
 
 #[global_allocator]
@@ -161,10 +157,8 @@ fn steady_state_networking_work_stays_within_allocation_budget() {
 #[test]
 fn packet_payload_pool_has_no_misses_after_warmup_through_crossbeam_io() {
     let _guard = ALLOCATION_TEST_LOCK.lock().unwrap();
-    let mut stepper = ClientServerStepper::from_config(StepperConfig::from_connection_types(
-        vec![ClientType::Raw],
-        ServerType::Raw,
-    ));
+    let mut stepper =
+        ClientServerStepper::from_config(StepperConfig::with_clients(vec![ClientType::Raw]));
     stepper.server_app.init_resource::<ReceivedMessageCount>();
     stepper
         .server_app
@@ -193,54 +187,6 @@ fn packet_payload_pool_has_no_misses_after_warmup_through_crossbeam_io() {
         misses_before,
         "the real Transport -> Link -> Crossbeam IO path allocated a packet payload after warmup",
     );
-}
-
-#[test]
-fn udp_receive_payload_pool_has_no_misses_after_warmup() {
-    let _guard = ALLOCATION_TEST_LOCK.lock().unwrap();
-    let mut stepper =
-        ClientServerStepper::from_config(StepperConfig::single().with_io(IoType::Udp));
-    stepper.server_app.init_resource::<ReceivedMessageCount>();
-    stepper
-        .server_app
-        .add_systems(Update, count_received_messages);
-    stepper.client_app().init_resource::<ReceivedMessageCount>();
-    stepper
-        .client_app()
-        .add_systems(Update, count_received_messages);
-    use_single_threaded_schedules(&mut stepper);
-
-    for _ in 0..WARMUP_FRAMES {
-        run_bidirectional_message_cycle(&mut stepper);
-    }
-    let misses_before = udp_receive_pool_misses(&stepper);
-    assert!(
-        misses_before > 0,
-        "warmup should exercise UDP receive-buffer allocation instrumentation",
-    );
-
-    for _ in 0..MEASURED_FRAMES {
-        run_bidirectional_message_cycle(&mut stepper);
-    }
-
-    assert_eq!(
-        udp_receive_pool_misses(&stepper),
-        misses_before,
-        "the real Transport -> Netcode -> Link -> UDP path allocated a receive buffer after warmup",
-    );
-}
-
-fn udp_receive_pool_misses(stepper: &ClientServerStepper) -> usize {
-    stepper
-        .client(0)
-        .get::<UdpIo>()
-        .expect("UDP client should have UdpIo")
-        .recv_buffer_pool_misses()
-        + stepper
-            .server()
-            .get::<ServerUdpIo>()
-            .expect("UDP server should have ServerUdpIo")
-            .recv_buffer_pool_misses()
 }
 
 fn packet_payload_pool_misses(stepper: &ClientServerStepper) -> usize {

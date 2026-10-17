@@ -1,9 +1,8 @@
 use crate::history_buffer::HistoryState;
 use crate::tick::Tick;
-use alloc::collections::{VecDeque, vec_deque};
-use alloc::vec::Vec;
 use bevy_ecs::component::Component;
 use bevy_reflect::Reflect;
+use std::collections::{VecDeque, vec_deque};
 
 /// A raw entry stored in [`ConfirmedHistory`].
 #[derive(Debug, PartialEq, Clone, Reflect)]
@@ -451,7 +450,6 @@ impl<C: Clone> Iterator for ConfirmedHistoryIntoIter<C> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use alloc::vec;
     use test_log::test;
 
     #[derive(Clone, PartialEq, Debug)]

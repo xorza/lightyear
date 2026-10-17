@@ -23,12 +23,6 @@ impl Plugin for SharedPlugins {
         .add_plugins(lightyear_messages::plugin::MessagePlugin)
         .add_plugins(lightyear_connection::ConnectionPlugin);
 
-        // This private control protocol lives in the shared plugin even though only P2P clients
-        // run its lifecycle systems. Message and channel IDs are assigned by registration order,
-        // so conventional clients and servers built with `p2p` must reserve the same IDs too.
-        #[cfg(feature = "p2p")]
-        app.add_plugins(lightyear_p2p::P2PProtocolPlugin);
-
         #[cfg(feature = "debug")]
         app.add_plugins(lightyear_tools::prelude::LightyearDebugPlugin);
 
@@ -50,8 +44,6 @@ impl Plugin for SharedPlugins {
         // IO
         #[cfg(feature = "crossbeam")]
         app.add_plugins(lightyear_crossbeam::CrossbeamPlugin);
-        #[cfg(all(feature = "udp", not(target_family = "wasm")))]
-        app.add_plugins(lightyear_udp::UdpPlugin);
 
         // Note: the server can also do interpolation
         // TODO: move the config to the InterpolationManager

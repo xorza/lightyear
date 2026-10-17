@@ -62,19 +62,6 @@ impl PluginGroup for ServerPlugins {
 
         let builder = builder.add(lightyear_connection::host::HostPlugin);
 
-        // IO
-        #[cfg(all(feature = "udp", not(target_family = "wasm")))]
-        let builder = builder.add(lightyear_udp::server::ServerUdpPlugin);
-        #[cfg(all(feature = "webtransport", not(target_family = "wasm")))]
-        let builder = builder.add(lightyear_webtransport::server::WebTransportServerPlugin);
-        #[cfg(all(feature = "websocket", not(target_family = "wasm")))]
-        let builder = builder.add(lightyear_websocket::server::WebSocketServerPlugin);
-        #[cfg(all(feature = "steam", not(target_family = "wasm")))]
-        let builder = builder.add(lightyear_steam::server::SteamServerPlugin);
-
-        // CONNECTION
-        #[cfg(feature = "netcode")]
-        let builder = builder.add(lightyear_netcode::server_plugin::NetcodeServerPlugin);
         #[cfg(feature = "raw_connection")]
         let builder = builder.add(lightyear_raw_connection::server::RawConnectionPlugin);
         builder

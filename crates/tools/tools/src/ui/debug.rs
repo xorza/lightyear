@@ -4,10 +4,6 @@
 //! This reads metrics from `bevy_metrics_dashboard::registry::MetricsRegistry` and
 //! displays a compact overlay. Phase 1 focuses on structure; phase 2 will expand metrics.
 
-use alloc::collections::VecDeque;
-use alloc::format;
-use alloc::string::ToString;
-use alloc::{vec, vec::Vec};
 use bevy_app::prelude::*;
 use bevy_color::prelude::*;
 use bevy_ecs::prelude::*;
@@ -17,6 +13,7 @@ use bevy_text::prelude::*;
 use bevy_time::prelude::*;
 use bevy_ui::prelude::*;
 use bevy_utils::prelude::*;
+use std::collections::VecDeque;
 
 use bevy_platform::collections::HashMap;
 use lightyear_metrics::prelude::{ClearBucketsSystem, MetricsPlugin, MetricsRegistry};
@@ -352,59 +349,6 @@ impl Default for MetricsPanelLayout {
                                     core::any::type_name::<RepliconMutationAcksChannel>(),
                                     MetricDirection::Receive,
                                 ),
-                            ],
-                        ),
-                        MetricsSubsection::new(
-                            "Inputs",
-                            vec![
-                                MetricSpec::new(
-                                    "Send Inputs (bytes/s)",
-                                    CompositeKey::new(
-                                        MetricKind::Gauge,
-                                        Key::from_parts(
-                                            "channel/send_bytes",
-                                            &[("channel", "lightyear_inputs::InputChannel")],
-                                        ),
-                                    ),
-                                )
-                                .with_per_second(true)
-                                .with_direction(MetricDirection::Send),
-                                MetricSpec::new(
-                                    "Recv Inputs (bytes/s)",
-                                    CompositeKey::new(
-                                        MetricKind::Gauge,
-                                        Key::from_parts(
-                                            "channel/recv_bytes",
-                                            &[("channel", "lightyear_inputs::InputChannel")],
-                                        ),
-                                    ),
-                                )
-                                .with_per_second(true)
-                                .with_direction(MetricDirection::Receive),
-                                MetricSpec::new(
-                                    "Send Inputs (num messages)",
-                                    CompositeKey::new(
-                                        MetricKind::Gauge,
-                                        Key::from_parts(
-                                            "channel/send_messages",
-                                            &[("channel", "lightyear_inputs::InputChannel")],
-                                        ),
-                                    ),
-                                )
-                                .with_per_second(true)
-                                .with_direction(MetricDirection::Send),
-                                MetricSpec::new(
-                                    "Recv Inputs (num messages)",
-                                    CompositeKey::new(
-                                        MetricKind::Gauge,
-                                        Key::from_parts(
-                                            "channel/recv_messages",
-                                            &[("channel", "lightyear_inputs::InputChannel")],
-                                        ),
-                                    ),
-                                )
-                                .with_per_second(true)
-                                .with_direction(MetricDirection::Receive),
                             ],
                         ),
                         MetricsSubsection::new(

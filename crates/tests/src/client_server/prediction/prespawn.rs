@@ -156,7 +156,7 @@ fn test_duplicate_prespawn_hash_keeps_first_candidate() {
 /// but Replicon should spawn it normally even if they have the same signature.
 #[test]
 fn test_prespawn_signature_for_client() {
-    let mut stepper = ClientServerStepper::from_config(StepperConfig::with_netcode_clients(2));
+    let mut stepper = ClientServerStepper::from_config(StepperConfig::with_raw_clients(2));
 
     let client_0_prespawn = stepper.client_apps[0]
         .world_mut()

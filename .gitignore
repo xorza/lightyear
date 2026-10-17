@@ -1,13 +1,2 @@
 /target
-/Cargo.lock
-/.idea
-/examples/**/dist/
 .DS_Store
-/examples/target/
-/examples/Cargo.lock
-.aider*
-**/CL1
-**/CL2
-**/SL
-**/HL
-.vscode

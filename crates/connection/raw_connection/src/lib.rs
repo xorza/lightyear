@@ -8,12 +8,6 @@ the peers independently of the underlying Link.
 This crates provide a connection implementation where the establishing the Link is equivalent to establishing the Connection.
 The LocalId and RemoteId come from the Link's SocketAddr.
 */
-#![no_std]
-
-extern crate alloc;
-extern crate core;
-#[cfg(feature = "std")]
-extern crate std;
 
 #[cfg(feature = "client")]
 pub mod client;

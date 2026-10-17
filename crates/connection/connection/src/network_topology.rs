@@ -382,7 +382,6 @@ fn infer_standard_topology(client: Option<ReadyClient>, server: Option<Entity>) 
 mod tests {
     use super::*;
     use crate::client::DisconnectedReason;
-    use alloc::vec::Vec;
     use bevy_ecs::change_detection::DetectChanges;
     use lightyear_core::id::{PeerId, RemoteId};
 

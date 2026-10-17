@@ -1,6 +1,5 @@
 //! Fragment validation, reassembly, and decompression for channel receives.
 
-use alloc::{vec, vec::Vec};
 use bevy_platform::collections::HashMap;
 
 use crate::channel::receive::ChannelReceiveError;

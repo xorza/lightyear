@@ -1,6 +1,5 @@
 #![allow(unused_imports)]
 
-use alloc::vec::Vec;
 use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
 use lightyear_connection::direction::NetworkDirection;
@@ -91,13 +90,13 @@ impl Plugin for RepliconChannelRegistrationPlugin {
 
         // Replicon reserves the same logical channel families in both directions.
         // We reuse the same bidirectional lightyear transport channels for both namespaces.
-        let server_channels = alloc::vec![
+        let server_channels = std::vec![
             (updates_kind, updates_id),
             (mutations_kind, mutations_id),
             (mutation_acks_kind, mutation_acks_id),
         ];
 
-        let client_channels = alloc::vec![
+        let client_channels = std::vec![
             (mutation_acks_kind, mutation_acks_id),
             (updates_kind, updates_id),
             (mutations_kind, mutations_id),

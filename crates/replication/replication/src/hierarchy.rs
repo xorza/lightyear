@@ -7,7 +7,6 @@ use crate::send::InterpolationTarget;
 #[cfg(feature = "prediction")]
 use crate::send::PredictionTarget;
 use crate::visibility::room::{Rooms, RoomsOverridden};
-use alloc::vec::Vec;
 use bevy_app::prelude::*;
 use bevy_ecs::component::Immutable;
 use bevy_ecs::entity::{EntityHashMap, MapEntities};
@@ -680,7 +679,6 @@ mod tests {
     use super::*;
 
     use crate::prelude::Replicate;
-    use alloc::vec;
     use bevy_replicon::prelude::{AuthMethod, RepliconSharedPlugin};
     use bevy_replicon::server::ServerPlugin;
     use bevy_state::app::StatesPlugin;

@@ -11,7 +11,7 @@ use tracing::{info, trace};
 
 pub struct RawConnectionPlugin;
 
-/// Marker type to represent a client where the IO layer (UDP/Websocket/WebTransport/etc.) which also acts as a Connection layer
+/// Marker type to represent a client whose IO layer also acts as its Connection layer
 ///
 /// In this case, Linked/Connected are equivalent; same for Unlinked/Disconnected.
 ///

@@ -9,13 +9,12 @@ description = "Packet handling for the lightyear networking library"
 repository = "https://github.com/cBournhonesque/lightyear"
 
 [features]
-default = ["std"]
-std = ["bevy_ecs/std"]
+default = []
 client = ["lightyear_connection/client"]
 server = ["lightyear_connection/server"]
 compression = []
 compression_lz4 = ["compression", "dep:lz4_flex"]
-metrics = ["dep:metrics", "std", "lightyear_utils/metrics", "bevy_utils/debug"]
+metrics = ["dep:metrics", "lightyear_utils/metrics", "bevy_utils/debug"]
 trace = []
 
 test_utils = []
@@ -46,7 +45,6 @@ indexmap.workspace = true
 governor.workspace = true
 lz4_flex = { workspace = true, optional = true }
 metrics = { workspace = true, optional = true }
-no_std_io2.workspace = true
 nonzero_ext.workspace = true
 ringbuffer.workspace = true
 thiserror.workspace = true

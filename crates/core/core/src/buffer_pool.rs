@@ -1,6 +1,5 @@
 //! Bounded recycling for split [`BytesMut`] allocations.
 
-use alloc::vec::Vec;
 use bytes::BytesMut;
 
 /// A bounded pool of fixed-capacity [`BytesMut`] allocations.

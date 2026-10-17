@@ -69,7 +69,7 @@ fn test_setup_host_server() {
 /// a connection first, that request should remain pending and be retried when the server starts.
 #[test]
 fn test_raw_host_connects_after_server_linked() {
-    let mut config = StepperConfig::from_connection_types(vec![ClientType::Host], ServerType::Raw);
+    let mut config = StepperConfig::with_clients(vec![ClientType::Host]);
     config.init = false;
     let mut stepper = ClientServerStepper::from_config(config);
     let server = stepper.server_entity;

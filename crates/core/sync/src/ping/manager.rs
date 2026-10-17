@@ -2,7 +2,6 @@
 use crate::ping::estimator::RttEstimatorEwma;
 use crate::ping::message::{Ping, Pong};
 use crate::ping::store::{PingId, PingStore};
-use alloc::{vec, vec::Vec};
 use bevy_ecs::component::Component;
 use bevy_reflect::Reflect;
 use bevy_time::{Real, Stopwatch, Time};

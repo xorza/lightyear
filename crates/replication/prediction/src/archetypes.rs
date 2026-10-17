@@ -6,7 +6,6 @@ use crate::registry::{
     UpdateFrameInterpolationPostRollbackFn,
 };
 use crate::rollback::{DeterministicPredicted, DisableRollback};
-use alloc::vec::Vec;
 use bevy_ecs::{
     archetype::{Archetype, ArchetypeGeneration, ArchetypeId, Archetypes},
     change_detection::Tick as ChangeTick,

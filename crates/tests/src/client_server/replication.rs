@@ -182,7 +182,7 @@ fn test_spawn_new_connection() {
         .unwrap();
 
     // second client connects
-    stepper.new_client(ClientType::Netcode, None);
+    stepper.new_client(ClientType::Raw, None);
     stepper.init();
 
     // make sure the entity is also replicated to the newly connected client
@@ -219,7 +219,7 @@ fn test_spawn_new_connection_respects_replication_target() {
         .expect("entity is not present in target client entity map");
 
     // second client connects
-    stepper.new_client(ClientType::Netcode, None);
+    stepper.new_client(ClientType::Raw, None);
     stepper.init();
 
     // make sure the entity is not replicated to the newly connected client
@@ -282,7 +282,7 @@ fn test_spawn_new_connection_respects_rooms() {
 
     // second client connects; it joins room B before its link is admitted
     // into replication (same as inserting client Rooms in `On<Add, Connected>`)
-    stepper.new_client(ClientType::Netcode, None);
+    stepper.new_client(ClientType::Raw, None);
     stepper
         .server_app
         .world_mut()
@@ -307,7 +307,7 @@ fn test_spawn_new_connection_respects_rooms() {
 #[test]
 fn test_no_replication_without_replication_sender() {
     let mut stepper: ClientServerStepper =
-        ClientServerStepper::from_config(StepperConfig::with_netcode_clients(2));
+        ClientServerStepper::from_config(StepperConfig::with_raw_clients(2));
 
     // Drop the marker from the second client's link: it stays connected
     // (messages still flow) but must receive no replication.
@@ -372,7 +372,7 @@ fn test_target_mode_replicates_to_matching_links() {
     use lightyear_replication::send::ReplicationMode;
 
     let mut stepper: ClientServerStepper =
-        ClientServerStepper::from_config(StepperConfig::with_netcode_clients(2));
+        ClientServerStepper::from_config(StepperConfig::with_raw_clients(2));
     let client_0_id = stepper.client_of(0).get::<RemoteId>().unwrap().0;
 
     let server_entity = stepper
@@ -535,7 +535,7 @@ fn test_component_update() {
 fn test_client_owned_entity_rebroadcasts_updates_to_other_clients() {
     use lightyear_core::id::RemoteId;
 
-    let mut stepper = ClientServerStepper::from_config(StepperConfig::with_netcode_clients(2));
+    let mut stepper = ClientServerStepper::from_config(StepperConfig::with_raw_clients(2));
 
     let client_0_id = stepper.client_of(0).get::<RemoteId>().unwrap().0;
     let client_entity = stepper.client_apps[0]
@@ -841,7 +841,7 @@ fn test_late_join_client_gets_predicted_marker_for_prediction_target_all() {
         "the sender-only prediction marker must not be materialized on the receiver"
     );
 
-    stepper.new_client(ClientType::Netcode, None);
+    stepper.new_client(ClientType::Raw, None);
     stepper.init();
     stepper.frame_step(3);
 
@@ -929,7 +929,7 @@ fn test_late_join_client_gets_latest_state_for_existing_predicted_entity() {
         stepper.frame_step(1);
     }
 
-    stepper.new_client(ClientType::Netcode, None);
+    stepper.new_client(ClientType::Raw, None);
     stepper.init();
     stepper.frame_step(3);
 
@@ -1401,7 +1401,7 @@ fn test_component_replicate_once_with_custom_serde() {
 /// should be despawned on the server.
 #[test]
 fn test_controlled_entity_despawned_on_server_when_client_disconnects() {
-    let mut stepper = ClientServerStepper::from_config(StepperConfig::with_netcode_clients(2));
+    let mut stepper = ClientServerStepper::from_config(StepperConfig::with_raw_clients(2));
 
     let client_of_1 = stepper.client_of(1).id();
     let server_entity = stepper
@@ -1446,7 +1446,7 @@ fn test_controlled_entity_despawned_on_server_when_client_disconnects() {
 /// disconnects.
 #[test]
 fn test_controlled_entity_with_persistent_lifetime_survives_client_disconnect() {
-    let mut stepper = ClientServerStepper::from_config(StepperConfig::with_netcode_clients(2));
+    let mut stepper = ClientServerStepper::from_config(StepperConfig::with_raw_clients(2));
 
     let client_of_1 = stepper.client_of(1).id();
     let server_entity = stepper
@@ -1475,7 +1475,7 @@ fn test_controlled_entity_with_persistent_lifetime_survives_client_disconnect() 
 /// When a client disconnects, all replicated entities on that client should be despawned.
 #[test]
 fn test_replicated_entities_despawned_on_client_when_client_disconnects() {
-    let mut stepper = ClientServerStepper::from_config(StepperConfig::with_netcode_clients(2));
+    let mut stepper = ClientServerStepper::from_config(StepperConfig::with_raw_clients(2));
 
     // server spawns an entity replicated to all clients
     let server_entity = stepper
@@ -1522,7 +1522,7 @@ fn test_replicated_entities_despawned_on_client_when_client_disconnects() {
 /// Instead, we manually trigger the disconnect on the client side and keep running it.
 #[test]
 fn test_all_replicated_despawned_on_disconnecting_client() {
-    let mut stepper = ClientServerStepper::from_config(StepperConfig::with_netcode_clients(2));
+    let mut stepper = ClientServerStepper::from_config(StepperConfig::with_raw_clients(2));
 
     // server spawns an entity replicated to all clients
     let server_entity = stepper
@@ -1568,7 +1568,7 @@ fn test_all_replicated_despawned_on_disconnecting_client() {
 /// A `Persistent` marker on a received entity exempts only that entity from disconnect cleanup.
 #[test]
 fn test_persistent_replicated_entity_survives_client_disconnect() {
-    let mut stepper = ClientServerStepper::from_config(StepperConfig::with_netcode_clients(2));
+    let mut stepper = ClientServerStepper::from_config(StepperConfig::with_raw_clients(2));
 
     let persistent_server_entity = stepper
         .server_app
@@ -1623,7 +1623,7 @@ fn test_persistent_replicated_entity_survives_client_disconnect() {
 /// A `Persistent` marker on the receiver exempts all received entities from disconnect cleanup.
 #[test]
 fn test_persistent_replication_receiver_preserves_entities_on_disconnect() {
-    let mut stepper = ClientServerStepper::from_config(StepperConfig::with_netcode_clients(2));
+    let mut stepper = ClientServerStepper::from_config(StepperConfig::with_raw_clients(2));
 
     let server_entity = stepper
         .server_app
@@ -1859,7 +1859,7 @@ fn test_sender_can_despawn_without_replicating_despawn() {
 /// only give the Predicted component to that specific client, not all clients.
 #[test]
 fn test_prediction_target_visibility_with_two_clients() {
-    let mut stepper = ClientServerStepper::from_config(StepperConfig::with_netcode_clients(2));
+    let mut stepper = ClientServerStepper::from_config(StepperConfig::with_raw_clients(2));
 
     let client_0_id = stepper
         .client_of(0)
@@ -2017,7 +2017,7 @@ fn test_prediction_target_visibility_with_two_clients() {
 /// more closely mimics how the simple_box example works.
 #[test]
 fn test_prediction_target_visibility_sequential_spawn() {
-    let mut stepper = ClientServerStepper::from_config(StepperConfig::with_netcode_clients(2));
+    let mut stepper = ClientServerStepper::from_config(StepperConfig::with_raw_clients(2));
 
     let client_0_id = stepper
         .client_of(0)
@@ -2139,7 +2139,7 @@ fn test_prediction_target_visibility_sequential_spawn() {
 fn test_simple_box_pattern_prediction_visibility() {
     use lightyear_core::id::RemoteId;
 
-    let mut stepper = ClientServerStepper::from_config(StepperConfig::with_netcode_clients(2));
+    let mut stepper = ClientServerStepper::from_config(StepperConfig::with_raw_clients(2));
 
     // Mimic handle_connected: for each connected client, spawn a player entity
     let client_of_0 = stepper.client_of_entities[0];
@@ -2374,7 +2374,7 @@ fn test_prediction_target_visibility_late_join() {
     );
 
     // Now client 1 connects (late join)
-    stepper.new_client(ClientType::Netcode, None);
+    stepper.new_client(ClientType::Raw, None);
     stepper.init();
 
     let client_1_id = stepper.client_of(1).get::<RemoteId>().unwrap().0;
@@ -2566,7 +2566,7 @@ fn test_prediction_visibility_observer_spawn_late_join() {
     );
 
     // Now client 1 joins late
-    stepper.new_client(ClientType::Netcode, None);
+    stepper.new_client(ClientType::Raw, None);
     stepper.init();
     stepper.frame_step(3);
 
@@ -2661,7 +2661,7 @@ fn test_reinsert_replicate() {
 fn test_server_side_visibility_bits() {
     use lightyear_core::id::RemoteId;
 
-    let mut stepper = ClientServerStepper::from_config(StepperConfig::with_netcode_clients(2));
+    let mut stepper = ClientServerStepper::from_config(StepperConfig::with_raw_clients(2));
 
     let client_0_id = stepper.client_of(0).get::<RemoteId>().unwrap().0;
     let client_1_id = stepper.client_of(1).get::<RemoteId>().unwrap().0;

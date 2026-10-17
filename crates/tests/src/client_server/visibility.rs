@@ -437,7 +437,7 @@ fn test_remove_replicate_suppresses_despawn_of_retained_entity() {
 #[test]
 fn test_despawn_with_visibility() {
     let mut stepper: ClientServerStepper =
-        ClientServerStepper::from_config(StepperConfig::with_netcode_clients(2));
+        ClientServerStepper::from_config(StepperConfig::with_raw_clients(2));
 
     let server_entity_0 = stepper
         .server_app
@@ -613,7 +613,7 @@ fn test_spawn_multiple_lose_visibility() {
 #[test]
 fn test_visibility_persists_on_replication_target_change() {
     let mut stepper: ClientServerStepper =
-        ClientServerStepper::from_config(StepperConfig::with_netcode_clients(2));
+        ClientServerStepper::from_config(StepperConfig::with_raw_clients(2));
 
     let server_entity = stepper
         .server_app

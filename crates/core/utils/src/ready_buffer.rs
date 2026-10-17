@@ -1,8 +1,7 @@
 //! Wrapper around a min-heap
-use alloc::collections::BinaryHeap;
-use alloc::{vec, vec::Vec};
 use bevy_reflect::Reflect;
 use core::cmp::Ordering;
+use std::collections::BinaryHeap;
 
 /// A buffer that contains items associated with a key (a Tick, Instant, etc.)
 ///

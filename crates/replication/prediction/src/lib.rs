@@ -1,10 +1,4 @@
 //! Handles client-side prediction
-#![no_std]
-
-extern crate alloc;
-extern crate core;
-#[cfg(feature = "std")]
-extern crate std;
 
 use core::fmt::Debug;
 

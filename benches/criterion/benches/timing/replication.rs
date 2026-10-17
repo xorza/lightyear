@@ -195,9 +195,8 @@ fn send_float_insert_n_clients(criterion: &mut Criterion) {
                 bencher.iter_custom(|iter| {
                     let mut elapsed = Duration::ZERO;
                     for _ in 0..iter {
-                        let mut stepper = ClientServerStepper::from_config(
-                            StepperConfig::with_netcode_clients(*n),
-                        );
+                        let mut stepper =
+                            ClientServerStepper::from_config(StepperConfig::with_raw_clients(*n));
                         let entities =
                             vec![
                                 (CompFull(0.0), Replicate::to_clients(NetworkTarget::All));

@@ -3,7 +3,7 @@ use crate::stepper::*;
 use bevy::prelude::{Entity, With};
 use bevy_replicon::prelude::Remote;
 use bevy_replicon::shared::server_entity_map::ServerEntityMap;
-use lightyear::prelude::{client::Connect, server::Start};
+use lightyear::prelude::client::Connect;
 use lightyear_connection::network_target::NetworkTarget;
 use lightyear_core::id::RemoteId;
 use lightyear_core::interpolation::Interpolated;
@@ -14,16 +14,10 @@ use lightyear_replication::send::ReplicatedFrom;
 use test_log::test;
 
 fn host_only_stepper_before_host_connect() -> ClientServerStepper {
-    let mut config =
-        StepperConfig::from_connection_types(vec![ClientType::Host], ServerType::Netcode);
+    let mut config = StepperConfig::with_clients(vec![ClientType::Host]);
     config.init = false;
     let mut stepper = ClientServerStepper::from_config(config);
-    stepper.server_app.finish();
-    stepper.server_app.cleanup();
-    stepper.server_app.world_mut().trigger(Start {
-        entity: stepper.server_entity,
-    });
-    stepper.server_app.world_mut().flush();
+    stepper.start_server();
     stepper
 }
 

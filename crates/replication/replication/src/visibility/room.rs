@@ -436,7 +436,6 @@ mod tests {
     use super::*;
     use crate::hierarchy::{HierarchyPlugin, HierarchySendPlugin};
     use crate::prelude::Replicate;
-    use alloc::vec;
     use bevy_replicon::prelude::{AuthMethod, RepliconSharedPlugin};
     use bevy_replicon::server::ServerPlugin;
 
@@ -685,7 +684,7 @@ mod tests {
         assert!(rooms.contains_room(room_a));
         assert!(rooms.contains_room(room_b));
         assert_eq!(
-            rooms.rooms().collect::<alloc::vec::Vec<_>>(),
+            rooms.rooms().collect::<std::vec::Vec<_>>(),
             [room_a, room_b]
         );
 
@@ -693,7 +692,7 @@ mod tests {
 
         assert!(!rooms.contains_room(room_a));
         assert!(rooms.contains_room(room_b));
-        assert_eq!(rooms.rooms().collect::<alloc::vec::Vec<_>>(), [room_b]);
+        assert_eq!(rooms.rooms().collect::<std::vec::Vec<_>>(), [room_b]);
     }
 
     #[test]

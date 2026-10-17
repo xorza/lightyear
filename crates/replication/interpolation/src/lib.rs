@@ -300,11 +300,6 @@
 //! [`plugin::InterpolationSystems`]. Custom interpolation systems should usually run in
 //! [`plugin::InterpolationSystems::Interpolate`] so they see histories after Lightyear
 //! has updated component presence for the interpolation timeline.
-#![no_std]
-
-extern crate alloc;
-#[cfg(feature = "std")]
-extern crate std;
 
 use bevy_ecs::component::{Component, Mutable};
 

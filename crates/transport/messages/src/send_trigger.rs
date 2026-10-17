@@ -2,7 +2,6 @@ use crate::plugin::MAX_TIMELINE_LAG_TICKS;
 use crate::registry::{MessageError, MessageKind, MessageModeMetadata, MessageRegistry};
 use crate::send::Priority;
 use crate::{MessageManager, MessageNetId};
-use alloc::vec::Vec;
 use bevy_ecs::change_detection::MutUntyped;
 use bevy_ecs::lifecycle::HookContext;
 use bevy_ecs::prelude::*;

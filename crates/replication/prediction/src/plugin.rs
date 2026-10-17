@@ -90,17 +90,6 @@ impl Plugin for PredictionMarkerPlugin {
     }
 }
 
-/// Initialize resources required by the global prediction pipeline.
-///
-/// `LastConfirmedInput` is deliberately not removed with `PredictionManager`: it also represents
-/// useful global input state for deterministic simulations that do not enable prediction.
-fn initialize_prediction_resources(
-    _trigger: On<Insert, PredictionManager>,
-    mut commands: Commands,
-) {
-    commands.init_resource::<LastConfirmedInput>();
-}
-
 #[deprecated(note = "Use PredictionSystems instead")]
 pub type PredictionSet = PredictionSystems;
 
@@ -235,12 +224,9 @@ impl Plugin for PredictionPlugin {
     fn build(&self, app: &mut App) {
         // RESOURCES
         app.init_resource::<PredictionRegistry>();
-        app.add_observer(initialize_prediction_resources);
-        // Observers are not retroactive, so also handle applications that inserted their manager
-        // before adding this plugin.
-        if app.world().contains_resource::<PredictionManager>() {
-            app.init_resource::<LastConfirmedInput>();
-        }
+        // The rollback systems read it in every app that has this plugin, with or without a
+        // `PredictionManager`, as a host server has none.
+        app.init_resource::<LastConfirmedInput>();
 
         // Custom entity disabling
         let rollback_disable_id = app
@@ -332,48 +318,16 @@ mod tests {
     use lightyear_connection::p2p::P2P;
     use lightyear_core::timeline::Rollback;
 
+    /// A host server adds the plugin without a `PredictionManager`, and its rollback systems still
+    /// read these resources.
     #[test]
-    fn prediction_manager_initializes_global_input_frontier() {
-        let mut app = App::new();
-        app.add_plugins(PredictionPlugin);
-        let manager = PredictionManager {
-            rollback_policy: crate::manager::RollbackPolicy {
-                max_rollback_ticks: 17,
-                ..Default::default()
-            },
-            ..Default::default()
-        };
-
-        assert!(!app.world().contains_resource::<LastConfirmedInput>());
-        app.insert_resource(manager);
-        app.world_mut().flush();
-
-        assert_eq!(
-            app.world()
-                .resource::<PredictionManager>()
-                .rollback_policy
-                .max_rollback_ticks,
-            17
-        );
-        assert!(app.world().contains_resource::<LastConfirmedInput>());
-    }
-
-    #[test]
-    fn prediction_manager_inserted_before_plugin_initializes_global_input_frontier() {
-        let mut app = App::new();
-        app.insert_resource(PredictionManager::default());
-
-        app.add_plugins(PredictionPlugin);
-
-        assert!(app.world().contains_resource::<LastConfirmedInput>());
-    }
-
-    #[test]
-    fn prespawn_state_is_application_global() {
+    fn global_prediction_state_exists_without_manager() {
         let mut app = App::new();
         app.add_plugins(PredictionPlugin);
 
+        assert!(!app.world().contains_resource::<PredictionManager>());
         assert!(app.world().contains_resource::<PreSpawnedReceiver>());
+        assert!(app.world().contains_resource::<LastConfirmedInput>());
     }
 
     #[derive(Resource, Default)]

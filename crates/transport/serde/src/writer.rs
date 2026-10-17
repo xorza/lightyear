@@ -10,8 +10,8 @@ use crate::SerializationError;
 use crate::varint::varint_len;
 use bytes::{BufMut, Bytes, BytesMut};
 use core::cmp;
-use no_std_io2::io;
-use no_std_io2::io::{Result, Write};
+use std::io;
+use std::io::{Result, Write};
 
 #[derive(Debug)]
 pub struct Writer(BytesMut);

@@ -1,4 +1,3 @@
-use alloc::vec::Vec;
 use bevy_app::{App, Plugin};
 use bevy_ecs::prelude::*;
 use bevy_reflect::Reflect;

@@ -9,20 +9,14 @@
 //!
 //! This crate is fundamental for preparing data to be sent over the network and for
 //! reconstructing data received from remote peers.
-#![no_std]
-
-extern crate alloc;
-#[cfg(any(feature = "std", test))]
-extern crate std;
 
 use crate::reader::{ReadInteger, ReadVarInt, Reader};
 use crate::varint::varint_len;
-use alloc::vec::Vec;
 use bevy_platform::collections::HashMap;
 use bytes::Bytes;
 use core::hash::{BuildHasher, Hash};
-use no_std_io2::io;
 use smallvec::{Array, SmallVec};
+use std::io;
 
 /// Utilities for mapping entities during serialization and deserialization.
 pub mod entity_map;
@@ -42,7 +36,7 @@ pub mod prelude {
     pub use crate::entity_map::{
         ReceiveEntityMap, ReceiveMapView, RemoteEntityMap, SendEntityMap, SendMapView,
     };
-    pub use no_std_io2::io::{Seek, SeekFrom};
+    pub use std::io::{Seek, SeekFrom};
 }
 
 use crate::writer::WriteInteger;
@@ -298,7 +292,6 @@ impl<K: ToBytes + Eq + Hash, V: ToBytes, S: Default + BuildHasher> ToBytes for H
 mod tests {
     use super::*;
     use crate::writer::Writer;
-    use alloc::vec;
     use bevy_ecs::entity::Entity;
 
     #[test]

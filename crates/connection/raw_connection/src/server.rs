@@ -17,7 +17,7 @@ use tracing::{error, trace};
 
 pub struct RawConnectionPlugin;
 
-/// Marker type to represent a server where the IO layer (UDP/Websocket/WebTransport/etc.) which also acts as a Connection layer
+/// Marker type to represent a server whose IO layer also acts as its Connection layer
 ///
 /// In this case, Linked/Started are equivalent; same for Unlinked/Stopped.
 ///
@@ -36,6 +36,18 @@ impl RawConnectionPlugin {
         if query.get(trigger.entity).is_ok() {
             trace!("RawClient Server Linked! Adding Started");
             commands.entity(trigger.entity).insert(Started);
+        }
+    }
+
+    /// For RawServers, Unlinked implies Stopped
+    fn on_server_unlinked(
+        trigger: On<Add, Unlinked>,
+        query: Query<(), With<RawServer>>,
+        mut commands: Commands,
+    ) {
+        if query.get(trigger.entity).is_ok() {
+            trace!("RawServer Unlinked! Adding Stopped");
+            commands.entity(trigger.entity).insert(Stopped);
         }
     }
 
@@ -74,18 +86,20 @@ impl RawConnectionPlugin {
     ) -> Result {
         if let Ok(server) = query.get_mut(trigger.entity) {
             trace!("RawClient Stop! Disconnecting all LinkOfs and triggering Unlink");
+            // Stopping goes first: an IO layer that unlinks at once inserts Stopped, which a later
+            // Stopping would remove.
+            commands.entity(trigger.entity).insert(Stopping);
             commands.trigger(Unlink {
                 entity: trigger.entity,
                 reason: UnlinkReason::ServerStopped,
             });
-            commands.entity(trigger.entity).insert(Stopping);
             // SAFETY: we know that the list of client entities are unique because it is a Relationship
             let unique_slice =
                 unsafe { UniqueEntitySlice::from_slice_unchecked(server.collection()) };
             link_query.iter_many_unique(unique_slice).try_for_each(
                 |(entity, remote_peer_id)| {
                     let PeerId::Raw(_) = remote_peer_id.0 else {
-                        error!("Client {:?} is not a Netcode client", remote_peer_id);
+                        error!("Client {:?} is not a raw connection client", remote_peer_id);
                         return Err(
                             lightyear_connection::server::ConnectionError::InvalidConnectionType,
                         );
@@ -118,6 +132,7 @@ impl Plugin for RawConnectionPlugin {
             (TransportSystems::Send, LinkSystems::Send).chain(),
         );
         app.add_observer(Self::on_server_linked);
+        app.add_observer(Self::on_server_unlinked);
         app.add_observer(Self::on_link_of_linked);
         app.add_observer(Self::on_stop);
     }

@@ -83,7 +83,6 @@ use crate::predicted_history::PredictionHistory;
 use crate::registry::PredictionRegistry;
 use crate::rollback::RollbackSystems;
 use crate::switch::{SwitchBlend, SwitchDirection};
-use alloc::vec::Vec;
 use bevy_app::prelude::*;
 use bevy_ecs::{
     archetype::{Archetype, ArchetypeGeneration, ArchetypeId, Archetypes},

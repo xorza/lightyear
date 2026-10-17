@@ -49,9 +49,6 @@ pub(crate) fn from_reader<T: DeserializeOwned>(reader: &mut Reader) -> postcard:
 #[cfg(test)]
 mod tests {
     use super::*;
-    use alloc::string::String;
-    use alloc::vec;
-    use alloc::vec::Vec;
     use serde::Deserialize;
 
     #[derive(Debug, Deserialize, PartialEq, Serialize)]

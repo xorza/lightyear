@@ -251,7 +251,7 @@ mod tests {
         let entity = app
             .world_mut()
             .spawn((
-                RemoteId(PeerId::Netcode(1)),
+                RemoteId(PeerId::Entity(1)),
                 ClientOf,
                 Link::default().with_mtu(LinkMtu::new(min_mtu)),
                 Connected,

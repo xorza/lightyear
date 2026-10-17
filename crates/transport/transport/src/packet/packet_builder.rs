@@ -10,15 +10,14 @@ use crate::packet::message::{MessageData, SendCandidate};
 use crate::packet::nack::PacketNackSettings;
 use crate::packet::packet::{HEADER_BYTES, MessageMetadata, Packet, SendCommit};
 use crate::packet::packet_type::PacketType;
-use alloc::vec::Vec;
 use bytes::{Bytes, BytesMut};
 use lightyear_core::{buffer_pool::BufferPool, tick::Tick};
 use lightyear_link::{DEFAULT_MTU, SendPayload};
 use lightyear_serde::{SerializationError, ToBytes};
-use no_std_io2::io::{self, Write};
+use std::io::{self, Write};
 use tracing::trace;
 
-/// Borrowed adapter for the serialization traits, which are based on `no_std_io2::Write`.
+/// Borrowed adapter for the serialization traits, which are based on `std::io::Write`.
 /// Packet storage itself remains a plain [`BytesMut`].
 struct PayloadWriter<'a>(&'a mut BytesMut);
 
@@ -599,7 +598,6 @@ impl PacketBuilder {
 
 #[cfg(test)]
 mod tests {
-    use alloc::vec;
     use core::time::Duration;
 
     use bevy_app::App;
@@ -765,7 +763,7 @@ mod tests {
     fn buffer_pool_does_not_retain_payloads_that_grew_past_the_mtu() {
         let mut pool = PacketBufferPool::new(DEFAULT_MTU);
         let mut payload = pool.take_payload();
-        payload.extend_from_slice(&alloc::vec![0; DEFAULT_MTU + 1]);
+        payload.extend_from_slice(&std::vec![0; DEFAULT_MTU + 1]);
 
         pool.payloads.recycle(payload);
 
@@ -778,7 +776,7 @@ mod tests {
     fn send_handoff_rejects_an_oversized_allocation_before_splitting() {
         let mut builder = PacketBuilder::new(1.5);
         let mut payload = BytesMut::with_capacity(DEFAULT_MTU * 2);
-        payload.extend_from_slice(&alloc::vec![0; DEFAULT_MTU]);
+        payload.extend_from_slice(&std::vec![0; DEFAULT_MTU]);
         let mut packet = Packet {
             payload,
             messages: Vec::new(),

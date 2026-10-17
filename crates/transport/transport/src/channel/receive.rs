@@ -1,10 +1,10 @@
 //! Channel receive state and delivery policies.
 
-use alloc::collections::VecDeque;
 use bevy_platform::collections::{HashMap, HashSet};
 use bytes::Bytes;
 use core::time::Duration;
 use lightyear_core::tick::Tick;
+use std::collections::VecDeque;
 
 use crate::channel::builder::{ChannelMode, ChannelSettings};
 use crate::channel::registry::ChannelKind;

@@ -34,7 +34,6 @@ use crossbeam_channel::{Receiver, Sender};
 use lightyear_link::SendPayload;
 // TODO: hook when you insert ChannelSettings, it creates a ChannelSender and ChannelReceiver component
 
-use alloc::{vec, vec::Vec};
 use bevy_utils::prelude::DebugName;
 
 pub const DEFAULT_MESSAGE_PRIORITY: f32 = 1.0;

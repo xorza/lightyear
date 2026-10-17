@@ -16,8 +16,7 @@ lightyear = { workspace = true, features = [
   "compression_lz4",
   "interpolation",
   "metrics",
-  "std",
-] }
+  ] }
 lightyear_replication.workspace = true
 lightyear_tests = { workspace = true }
 

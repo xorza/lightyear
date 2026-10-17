@@ -1,8 +1,5 @@
 //! Helpers for logging component snapshots from user-selected schedule points.
 
-use alloc::format;
-use alloc::string::String;
-use alloc::{vec, vec::Vec};
 use core::any::{TypeId, type_name};
 use core::fmt::Debug;
 
@@ -16,14 +13,11 @@ use bevy_ecs::schedule::ScheduleLabel;
 use bevy_ecs::world::EntityRef;
 use bevy_reflect::{TypeRegistration, TypeRegistry};
 use lightyear_core::prelude::{LocalTimeline, Tick};
-#[cfg(feature = "std")]
 use serde::Serialize;
-#[cfg(feature = "std")]
 use serde_json::Value;
 use tracing::{Level, error};
 
 use crate::debug::schema::{DebugCategory, DebugSamplePoint, LIGHTYEAR_DEBUG_TARGET_COMPONENT};
-#[cfg(feature = "std")]
 use crate::debug::tracing_layer::JsonDebugValue;
 
 /// Marker component for entities whose component values should be sampled.
@@ -66,13 +60,11 @@ impl LightyearDebug {
     ///
     /// Unlike [`Self::component`], this emits `value` as a JSON object/array/scalar instead
     /// of a `Debug` string. This makes downstream DuckDB analysis avoid regex parsing.
-    #[cfg(feature = "std")]
     pub fn component_structured<C: Component + Serialize>() -> Self {
         Self::default().with_component_structured::<C>()
     }
 
     /// Log one serializable component type as structured JSON at the specified sample points.
-    #[cfg(feature = "std")]
     pub fn component_structured_at<C: Component + Serialize>(
         sample_points: impl IntoIterator<Item = DebugSamplePoint>,
     ) -> Self {
@@ -119,7 +111,6 @@ impl LightyearDebug {
     }
 
     /// Add a serializable component type to this marker, sampled wherever a sampler runs.
-    #[cfg(feature = "std")]
     pub fn with_component_structured<C: Component + Serialize>(mut self) -> Self {
         self.components.push(LightyearDebugComponentRule {
             component: Some(LightyearDebugComponentSelector::PendingTyped(
@@ -131,7 +122,6 @@ impl LightyearDebug {
     }
 
     /// Add a serializable component type to this marker at the specified sample points.
-    #[cfg(feature = "std")]
     pub fn with_component_structured_at<C: Component + Serialize>(
         mut self,
         sample_points: impl IntoIterator<Item = DebugSamplePoint>,
@@ -306,7 +296,6 @@ impl LightyearDebugComponentFormatter {
     }
 
     /// Build a formatter that can read `C` from an [`EntityRef`] and serialize it to JSON.
-    #[cfg(feature = "std")]
     fn structured<C>() -> Self
     where
         C: Component + Serialize,
@@ -544,7 +533,6 @@ pub fn log_component_value<C: Component + Debug>(
 }
 
 /// Emit one structured component snapshot row.
-#[cfg(feature = "std")]
 #[inline]
 pub fn log_component_json_value<C: Component + Serialize>(
     entity: Entity,
@@ -888,7 +876,6 @@ fn log_component_value_inner(
                 );
             }
         }
-        #[cfg(feature = "std")]
         LightyearDebugComponentValue::Structured(value) => {
             log_component_structured_value(
                 entity,
@@ -902,8 +889,6 @@ fn log_component_value_inner(
         }
     }
 }
-
-#[cfg(feature = "std")]
 fn log_component_structured_value(
     entity: Entity,
     component: &str,
@@ -948,8 +933,6 @@ fn format_debug_component<C: Component + Debug>(
         .get::<C>()
         .map(|component| LightyearDebugComponentValue::Debug(format!("{component:?}")))
 }
-
-#[cfg(feature = "std")]
 fn format_structured_component<C: Component + Serialize>(
     entity_ref: &EntityRef<'_>,
 ) -> Option<LightyearDebugComponentValue> {
@@ -962,7 +945,6 @@ fn format_structured_component<C: Component + Serialize>(
 
 enum LightyearDebugComponentValue {
     Debug(String),
-    #[cfg(feature = "std")]
     Structured(Value),
 }
 

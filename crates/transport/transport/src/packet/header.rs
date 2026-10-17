@@ -1,4 +1,3 @@
-use alloc::{vec, vec::Vec};
 use bevy_platform::hash::FixedHasher;
 #[cfg(feature = "test_utils")]
 use core::convert::TryInto;
@@ -396,7 +395,6 @@ impl ReceiveBuffer {
 
 #[cfg(test)]
 mod tests {
-    use alloc::vec;
     use core::time::Duration;
     use lightyear_serde::ToBytes;
 

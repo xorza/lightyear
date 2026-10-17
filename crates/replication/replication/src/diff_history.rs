@@ -1,6 +1,5 @@
 //! Receiver-side history support for diff-replicated confirmed state.
 
-use alloc::{format, vec::Vec};
 use core::marker::PhantomData;
 
 use bevy_ecs::error::Result;
@@ -446,7 +445,6 @@ pub(crate) fn prune_history_diff_receiver<C: RepliconDiffable>(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use alloc::vec;
     use bevy_ecs::component::Component;
     use serde::{Deserialize, Serialize};
 

@@ -9,8 +9,7 @@ description = "Metrics recorder lightyear"
 repository = "https://github.com/cBournhonesque/lightyear"
 
 [features]
-default = ["std"]
-std = []
+default = []
 test_utils = []
 
 [dependencies]

@@ -8,7 +8,6 @@
 use crate::{
     Link, LinkPlugin, Linked, Linking, RecvLinkConditioner, Unlink, UnlinkReason, Unlinked,
 };
-use alloc::{format, vec::Vec};
 use bevy_app::{App, Plugin};
 use bevy_ecs::lifecycle::HookContext;
 use bevy_ecs::prelude::*;

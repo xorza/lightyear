@@ -363,7 +363,6 @@ impl FragmentData {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use alloc::vec;
 
     #[test]
     fn message_id_arithmetic_and_order_wrap_at_u16_max() {

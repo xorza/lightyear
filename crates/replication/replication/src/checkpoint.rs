@@ -34,7 +34,7 @@
 //!
 //! [`ConfirmHistory`]: bevy_replicon::client::confirm_history::ConfirmHistory
 //! [`ServerMutateTicks`]: bevy_replicon::client::server_mutate_ticks::ServerMutateTicks
-use alloc::collections::VecDeque;
+use std::collections::VecDeque;
 
 #[cfg(feature = "client")]
 use bevy_ecs::prelude::On;

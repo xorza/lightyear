@@ -3,10 +3,7 @@
 Lightyear is a networking library for Bevy.
 It provides a set of plugins that can be used to create multiplayer games.
 
-It has been tested mostly in the server-client topology, but the API should be flexible
-enough to support other topologies such as peer-to-peer.
-
-You can find more information in the [book](https://cbournhonesque.github.io/lightyear/book/) or check out the [examples](https://github.com/cBournhonesque/lightyear/tree/main/examples)!
+It targets the server-client topology on native platforms.
 
 
 ## Getting started
@@ -40,16 +37,11 @@ It is also possible to use the subcrates directly:
 **IO** (How to send bytes over the network)
 - [`lightyear_link`]: provides a transport-agnostic `Link` component which is responsible for sending and receiving bytes over the network.
 - [`lightyear_crossbeam`]: IO layer that uses crossbeam channels. Useful for testing or for local networking (by having a server process and a client process on the same machine).
-- [`lightyear_udp`] / [`lightyear_webtransport`]: IO layers for the UDP protocol and WebTransport protocol respectively.
 
 **Connection**
 - [`lightyear_connection`]: this layer wraps the IO layer by providing a long-running `PeerId` identifier component that is used to identify a peer in the network.
 Also provides the `Client` and `Server` components for client-server topologies.
-- [`lightyear_netcode`]: a connection layer that uses the [netcode.io](https://github.com/mas-bandwidth/netcode/blob/main/STANDARD.md) standard for creating secure connections over an unreliable IO
-such as UDP.
-- [`lightyear_steam`]: a connection layer that uses the Steam networking API to both send the bytes and to provide a long-running identifier. This layer operates at both the IO and
-the connection
-level.
+- [`lightyear_raw_connection`]: a connection layer that uses the IO layer directly, for IO layers that authenticate their peers themselves.
 
 Currently it is not possible to use an IO layer without a connection layer.
 
@@ -71,15 +63,6 @@ the network.
 - [`lightyear_frame_interpolation`]: most of the game logic should run in the FixedMain schedule, but the rendering is done in the PostUpdate schedule. To avoid visual artifacts, we need some
 interpolation to interpolate the rendering between the FixedMain states.
 
-**Inputs**
-- [`lightyear_inputs`]: backend-agnostic general input queue plugin to network client inputs
-- [`lightyear_inputs_native`]: provides support to use any user-defined struct as an input type
-- [`lightyear_inputs_leafwing`]: provides support to network [leafwing_input_manager](https://github.com/Leafwing-Studios/leafwing-input-manager) inputs
-- [`lightyear_inputs_bei`]: provides support to network [bevy_enhanced_input](https://github.com/projectharmonia/bevy_enhanced_input) inputs
-
-**Extra**
-- [`lightyear_avian2d`]/[`lightyear_avian3d`]: provides a plugin to help handle networking Avian components. This sets the correct system ordering, etc.
-
 
 ### Implement the Protocol
 
@@ -91,7 +74,6 @@ There are several steps:
 - [Adding messages](prelude::MessageRegistry#adding-messages)
 - [Adding components](prelude::ComponentRegistry#adding-components)
 - [Adding channels](prelude::ChannelRegistry#adding-channels)
-- [Adding leafwing inputs](lightyear_inputs_leafwing#adding-leafwing-inputs) or [Adding inputs](lightyear_inputs_native#adding-a-new-input-type)
 
 NOTE: the protocol must currently be added AFTER the Client/Server Plugins, but BEFORE any `Client` or `Server` entity is spawned.
 
@@ -286,7 +268,6 @@ sampled together. See [`interpolation`] for the detailed rule model,
 priorities, filters, bundle interpolation, and frame-interpolation reuse.
 
 [`Replicated`]: prelude::Replicated
-[`lightyear_steam`]: lightyear_steam
  */
 //!
 //! ### Feature Flags
@@ -328,11 +309,6 @@ pub mod metrics {
     pub use lightyear_metrics::*;
 }
 
-#[cfg(feature = "netcode")]
-pub mod netcode {
-    pub use lightyear_netcode::*;
-}
-
 #[cfg(feature = "interpolation")]
 pub mod interpolation {
     pub use lightyear_interpolation::*;
@@ -343,61 +319,12 @@ pub mod prediction {
     pub use lightyear_prediction::*;
 }
 
-#[cfg(feature = "steam")]
-pub mod steam {
-    pub use lightyear_steam::*;
-}
-
 pub mod transport {
     pub use lightyear_transport::*;
 }
 
-#[cfg(feature = "webtransport")]
-pub mod webtransport {
-    pub use lightyear_webtransport::*;
-}
-
-#[cfg(feature = "websocket")]
-pub mod websocket {
-    pub use lightyear_websocket::*;
-}
-
-#[cfg(feature = "avian2d")]
-pub mod avian2d {
-    pub use lightyear_avian2d::*;
-}
-
-#[cfg(feature = "avian3d")]
-pub mod avian3d {
-    pub use lightyear_avian3d::*;
-}
-
-#[cfg(any(feature = "input_native", feature = "leafwing", feature = "input_bei"))]
-pub mod input {
-    pub use lightyear_inputs::*;
-    #[cfg(feature = "input_native")]
-    pub mod native {
-        pub use lightyear_inputs_native::*;
-    }
-
-    #[cfg(feature = "input_bei")]
-    pub mod bei {
-        pub use lightyear_inputs_bei::*;
-    }
-
-    #[cfg(feature = "leafwing")]
-    pub mod leafwing {
-        pub use lightyear_inputs_leafwing::*;
-    }
-}
-
 pub mod connection {
     pub use lightyear_connection::*;
-}
-
-#[cfg(feature = "p2p")]
-pub mod p2p {
-    pub use lightyear_p2p::*;
 }
 
 pub mod utils {
@@ -412,30 +339,11 @@ pub mod prelude {
     pub use lightyear_messages::prelude::*;
     #[cfg(feature = "metrics")]
     pub use lightyear_metrics::prelude::*;
-    #[cfg(feature = "p2p")]
-    pub use lightyear_p2p::prelude::*;
     #[cfg(feature = "replication")]
     pub use lightyear_replication::prelude::*;
     pub use lightyear_serde::prelude::*;
     pub use lightyear_sync::prelude::*;
     pub use lightyear_transport::prelude::*;
-
-    #[cfg(all(not(target_family = "wasm"), feature = "udp"))]
-    pub use lightyear_udp::prelude::*;
-
-    #[allow(unused_imports)]
-    #[cfg(feature = "webtransport")]
-    pub use lightyear_webtransport::prelude::*;
-
-    #[allow(unused_imports)]
-    #[cfg(feature = "websocket")]
-    pub use lightyear_websocket::prelude::*;
-
-    #[cfg(feature = "steam")]
-    pub use lightyear_steam::prelude::*;
-
-    #[cfg(feature = "netcode")]
-    pub use lightyear_netcode::prelude::*;
 
     // TODO: maybe put this in prelude::client?
     #[cfg(feature = "prediction")]
@@ -446,28 +354,6 @@ pub mod prelude {
 
     #[cfg(feature = "debug")]
     pub use lightyear_tools::prelude::*;
-
-    #[cfg(any(feature = "input_native", feature = "leafwing", feature = "input_bei"))]
-    pub mod input {
-        pub use lightyear_inputs::prelude::*;
-
-        #[cfg(feature = "input_native")]
-        pub mod native {
-            pub use lightyear_inputs_native::prelude::*;
-        }
-
-        #[cfg(feature = "input_bei")]
-        pub mod bei {
-            pub use lightyear_inputs_bei::prelude::*;
-        }
-        #[cfg(feature = "input_bei")]
-        pub use lightyear_inputs_bei::prelude::InputRegistryExt;
-
-        #[cfg(feature = "leafwing")]
-        pub mod leafwing {
-            pub use lightyear_inputs_leafwing::prelude::*;
-        }
-    }
 
     #[cfg(feature = "client")]
     pub mod client {
@@ -485,21 +371,8 @@ pub mod prelude {
         )]
         pub type Replicated = Remote;
 
-        #[cfg(feature = "netcode")]
-        pub use lightyear_netcode::prelude::client::*;
         #[cfg(feature = "raw_connection")]
         pub use lightyear_raw_connection::prelude::client::*;
-        #[cfg(feature = "steam")]
-        pub use lightyear_steam::prelude::client::*;
-        #[cfg(feature = "websocket")]
-        pub use lightyear_websocket::prelude::client::*;
-        #[cfg(feature = "webtransport")]
-        pub use lightyear_webtransport::prelude::client::*;
-
-        #[cfg(any(feature = "input_native", feature = "leafwing", feature = "input_bei"))]
-        pub mod input {
-            pub use lightyear_inputs::prelude::client::*;
-        }
     }
 
     #[cfg(feature = "server")]
@@ -508,23 +381,7 @@ pub mod prelude {
         pub use lightyear_connection::prelude::server::*;
         pub use lightyear_link::prelude::server::*;
 
-        #[cfg(all(not(target_family = "wasm"), feature = "udp", feature = "server"))]
-        pub use lightyear_udp::prelude::server::*;
-
-        #[cfg(feature = "netcode")]
-        pub use lightyear_netcode::prelude::server::*;
         #[cfg(feature = "raw_connection")]
         pub use lightyear_raw_connection::prelude::server::*;
-        #[cfg(feature = "steam")]
-        pub use lightyear_steam::prelude::server::*;
-        #[cfg(all(feature = "websocket", not(target_family = "wasm")))]
-        pub use lightyear_websocket::prelude::server::*;
-        #[cfg(all(feature = "webtransport", not(target_family = "wasm")))]
-        pub use lightyear_webtransport::prelude::server::*;
-
-        #[cfg(any(feature = "input_native", feature = "leafwing", feature = "input_bei"))]
-        pub mod input {
-            pub use lightyear_inputs::prelude::server::*;
-        }
     }
 }

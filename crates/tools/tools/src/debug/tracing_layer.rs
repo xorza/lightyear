@@ -1,12 +1,9 @@
 //! Tracing subscriber layer for structured `lightyear_debug` events.
-
-use alloc::boxed::Box;
-use alloc::format;
-use alloc::string::{String, ToString};
 use std::eprintln;
 use std::fs::{File, OpenOptions};
 use std::io::{self, BufWriter, Write};
 use std::path::Path;
+use std::string::{String, ToString};
 use std::sync::Mutex;
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -296,8 +293,7 @@ impl core::fmt::Debug for JsonDebugValue {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use alloc::sync::Arc;
-    use alloc::vec::Vec;
+    use std::sync::Arc;
     use std::sync::Mutex as StdMutex;
     use tracing::dispatcher;
     use tracing_subscriber::prelude::*;

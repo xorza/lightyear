@@ -5,8 +5,6 @@ use lightyear_replication::checkpoint::{
 
 use bevy_replicon::prelude::RepliconTick;
 
-extern crate alloc;
-
 #[test]
 fn checkpoint_map_prunes_old_entries() {
     let mut map = ReplicationCheckpointMap::default();

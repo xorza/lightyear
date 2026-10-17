@@ -7,13 +7,6 @@
 //! - History buffers for state management (`history_buffer`).
 //! - Core plugin structures (`plugin`).
 
-#![cfg_attr(not(feature = "test_utils"), no_std)]
-
-extern crate alloc;
-extern crate core;
-#[cfg(test)]
-extern crate std;
-
 /// Bounded recycling for split mutable byte-buffer allocations.
 pub mod buffer_pool;
 

@@ -204,7 +204,7 @@ fn test_send_triggers_map_entities() {
 /// Test sending a message to multiple clients
 #[test]
 fn test_send_multi_messages() {
-    let mut stepper = ClientServerStepper::from_config(StepperConfig::with_netcode_clients(2));
+    let mut stepper = ClientServerStepper::from_config(StepperConfig::with_raw_clients(2));
 
     stepper.client_apps[0].init_resource::<Buffer<StringMessage>>();
     stepper.client_apps[0].add_systems(Update, count_messages_observer::<StringMessage>);
@@ -251,7 +251,7 @@ fn test_send_multi_messages() {
 /// Test sending a message to multiple clients with NetworkTarget
 #[test]
 fn test_send_multi_messages_with_target() {
-    let mut stepper = ClientServerStepper::from_config(StepperConfig::with_netcode_clients(2));
+    let mut stepper = ClientServerStepper::from_config(StepperConfig::with_raw_clients(2));
 
     stepper.client_apps[0].init_resource::<Buffer<StringMessage>>();
     stepper.client_apps[0].add_systems(Update, count_messages_observer::<StringMessage>);

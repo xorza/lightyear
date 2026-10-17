@@ -78,18 +78,14 @@ impl TransportPlugin {
     /// in the appropriate channel receiver
     fn buffer_receive(
         time: Res<Time<Real>>,
-        #[cfg(feature = "std")] par_commands: ParallelCommands,
-        #[cfg(not(feature = "std"))] mut commands: Commands,
+        par_commands: ParallelCommands,
         channel_registry: Res<ChannelRegistry>,
         mut query: Query<(Entity, &mut Link, &mut Transport), (With<Linked>, Without<HostClient>)>,
     ) {
         #[cfg(feature = "metrics")]
         let _timer = timer_gauge!("transport/recv");
 
-        #[cfg(feature = "std")]
         let query = adaptive_for_each_mut!(query);
-        #[cfg(not(feature = "std"))]
-        let query = query.iter_mut();
 
         query.for_each(|(entity, mut link, mut transport)| {
             // enable split borrows
@@ -138,8 +134,6 @@ impl TransportPlugin {
                         .packet_manager
                         .header_manager
                         .process_recv_packet_header(&header, time.elapsed());
-
-                    #[cfg(feature = "std")]
                     par_commands.command_scope(|mut commands| {
                         newly_acked_packets
                             .iter()
@@ -155,22 +149,6 @@ impl TransportPlugin {
                             remote_tick: tick,
                         });
                     });
-                    #[cfg(not(feature = "std"))]
-                    {
-                        newly_acked_packets
-                            .iter()
-                            .for_each(|(packet_id, rtt_sample)| {
-                                commands.trigger(PacketAcked {
-                                    entity,
-                                    packet_id: *packet_id,
-                                    rtt_sample: *rtt_sample,
-                                });
-                            });
-                        commands.trigger(PacketReceived {
-                            entity,
-                            remote_tick: tick,
-                        });
-                    }
 
                     let mut packet_type = header.get_packet_type();
                     if packet_type.is_compressed() {
@@ -311,17 +289,11 @@ impl TransportPlugin {
                         packet_loss = true,
                         "transport packet marked lost"
                     );
-                    #[cfg(feature = "std")]
                     par_commands.command_scope(|mut commands| {
                         commands.trigger(PacketLost {
                             entity,
                             packet_id: lost_packet,
                         });
-                    });
-                    #[cfg(not(feature = "std"))]
-                    commands.trigger(PacketLost {
-                        entity,
-                        packet_id: lost_packet,
                     });
                     if let Some(mut message_acks) = packet_message_acks.take(&lost_packet) {
                         let result =
@@ -705,7 +677,6 @@ impl Plugin for TestTransportPlugin {
 
 #[cfg(test)]
 mod tests {
-    use alloc::{vec, vec::Vec};
 
     use super::*;
     use crate::channel::builder::{ChannelMode, ChannelSettings};

@@ -5,8 +5,6 @@
 //! - is a ClientOf of a Server
 //! - the Server is started
 
-use alloc::vec::Vec;
-
 #[cfg(feature = "server")]
 use crate::{
     client::{

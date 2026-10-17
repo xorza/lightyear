@@ -234,7 +234,7 @@ fn test_child_overrides_prediction_target() {
 #[test]
 fn test_hierarchy_visibility_propagates_to_children() {
     let mut stepper: ClientServerStepper =
-        ClientServerStepper::from_config(StepperConfig::with_netcode_clients(2));
+        ClientServerStepper::from_config(StepperConfig::with_raw_clients(2));
 
     let server_parent = stepper
         .server_app
@@ -312,7 +312,7 @@ fn test_hierarchy_visibility_propagates_to_children() {
 #[test]
 fn test_hierarchy_visibility_late_child_stays_hidden() {
     let mut stepper: ClientServerStepper =
-        ClientServerStepper::from_config(StepperConfig::with_netcode_clients(2));
+        ClientServerStepper::from_config(StepperConfig::with_raw_clients(2));
 
     let server_parent = stepper
         .server_app
@@ -403,7 +403,7 @@ fn test_hierarchy_visibility_late_child_stays_hidden() {
 #[test]
 fn test_hierarchy_visibility_child_override() {
     let mut stepper: ClientServerStepper =
-        ClientServerStepper::from_config(StepperConfig::with_netcode_clients(2));
+        ClientServerStepper::from_config(StepperConfig::with_raw_clients(2));
 
     let server_parent = stepper
         .server_app
@@ -505,7 +505,7 @@ fn test_hierarchy_visibility_child_override() {
 #[test]
 fn test_hierarchy_replicate_child_overrides_target_inherits_rooms() {
     let mut stepper: ClientServerStepper =
-        ClientServerStepper::from_config(StepperConfig::with_netcode_clients(2));
+        ClientServerStepper::from_config(StepperConfig::with_raw_clients(2));
 
     let room_a = stepper
         .server_app
@@ -608,7 +608,7 @@ fn test_hierarchy_replicate_child_overrides_target_inherits_rooms() {
 #[test]
 fn test_hierarchy_rooms_propagate_to_children() {
     let mut stepper: ClientServerStepper =
-        ClientServerStepper::from_config(StepperConfig::with_netcode_clients(2));
+        ClientServerStepper::from_config(StepperConfig::with_raw_clients(2));
 
     let room_a = stepper
         .server_app
@@ -789,7 +789,7 @@ fn test_hierarchy_rooms_propagate_to_children() {
 #[test]
 fn test_hierarchy_rooms_child_override() {
     let mut stepper: ClientServerStepper =
-        ClientServerStepper::from_config(StepperConfig::with_netcode_clients(2));
+        ClientServerStepper::from_config(StepperConfig::with_raw_clients(2));
 
     let room_a = stepper
         .server_app

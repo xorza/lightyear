@@ -6,7 +6,6 @@ use bevy_app::App;
 use bevy_ecs::archetype::{Archetype, ArchetypeEntity};
 use bevy_ecs::component::{ComponentId, Mutable};
 use bevy_ecs::prelude::*;
-use bevy_ecs::ptr::PtrMut;
 use bevy_ecs::world::unsafe_world_cell::UnsafeWorldCell;
 use bevy_math::{
     Curve,
@@ -72,9 +71,6 @@ pub struct PredictionMetadata {
     pub(crate) prune_history_diff_receiver: Option<PruneHistoryDiffReceiverFn>,
     #[cfg(feature = "metrics")]
     metric_handles: PredictionMetricHandles,
-    #[cfg(feature = "deterministic")]
-    /// Function to hash the value in [`PredictionHistory<C>`] at a given tick.
-    pub pop_until_tick_and_hash: Option<PopUntilTickAndHashFn>,
 }
 
 /// Type-erased rollback preparation metadata shared by networked and local-only components.
@@ -174,13 +170,6 @@ impl PredictionMetricHandles {
     }
 }
 
-impl PredictionMetadata {
-    #[cfg(feature = "deterministic")]
-    pub fn pop_until_tick_and_hash(&self) -> Option<PopUntilTickAndHashFn> {
-        self.pop_until_tick_and_hash
-    }
-}
-
 /// Function that will check if we should do a rollback by comparing the confirmed component value
 /// with the predicted component's history.
 pub(crate) type CheckRollbackFn = unsafe fn(
@@ -223,13 +212,6 @@ pub(crate) type PruneHistoryDiffReceiverFn =
 /// Type-erased pending-diff lookup for one predicted diff component on one entity.
 pub(crate) type PendingDiffTickFn = fn(&ReplicationStorage, Tick, Entity) -> Option<Tick>;
 
-/// Type-erased function for hashing the value in a [`PredictionHistory<C>`] component at a tick.
-/// The function fn should be of type fn(&C, &mut seahash::SeaHasher) and will be called with the
-/// value returned by the history buffer lookup.
-/// Returns `true` if the history resolves to a component value at that tick and hashes it.
-/// Returns `false` if no component value exists at that tick, in which case nothing is hashed.
-pub type PopUntilTickAndHashFn = fn(PtrMut, Tick, &mut seahash::SeaHasher, fn()) -> bool;
-
 impl PredictionMetadata {
     fn new<C: SyncComponent>(rollback: RollbackMetadata) -> Self {
         let should_rollback: ShouldRollbackFn<C> = <C as PartialEq>::ne;
@@ -248,8 +230,6 @@ impl PredictionMetadata {
             prune_history_diff_receiver: None,
             #[cfg(feature = "metrics")]
             metric_handles: PredictionMetricHandles::default(),
-            #[cfg(feature = "deterministic")]
-            pop_until_tick_and_hash: Some(PredictionRegistry::pop_until_tick_and_hash::<C>),
         }
     }
 }
@@ -700,39 +680,6 @@ impl PredictionRegistry {
             let mut history = PredictionHistory::<C>::default();
             history.add_state(seed_tick, HistoryState::Removed);
             entity_mut.insert(history);
-        }
-    }
-
-    /// Type-erased function for hashing the value in a [`PredictionHistory<C>`] at `tick`.
-    ///
-    /// Returns `true` if the history resolves to a component value at `tick` and hashes it.
-    /// Returns `false` if no component value exists at `tick`, in which case nothing is hashed.
-    ///
-    /// Safety
-    ///
-    /// - The PtrMut must point to a valid [`PredictionHistory<C>`] component.
-    /// - The function `f` must be a valid function of type `fn(&C, &mut seahash::SeaHasher)`.
-    fn pop_until_tick_and_hash<C: Debug + Clone + 'static>(
-        ptr: PtrMut,
-        tick: Tick,
-        hasher: &mut seahash::SeaHasher,
-        f: fn(),
-    ) -> bool {
-        // SAFETY: the caller must ensure that the function has the correct type
-        let f = unsafe { core::mem::transmute::<fn(), fn(&C, &mut seahash::SeaHasher)>(f) };
-        // SAFETY: the caller must ensure that the pointer is valid and points to a PredictionHistory<C>
-        let history = unsafe { ptr.deref_mut::<PredictionHistory<C>>() };
-        if let Some(v) = history.get(tick) {
-            trace!(
-                "Read value from PredictionHistory<{:?}> at tick {:?}: {:?} for hashing",
-                DebugName::type_name::<C>(),
-                tick,
-                v
-            );
-            f(v, hasher);
-            true
-        } else {
-            false
         }
     }
 }
@@ -1659,7 +1606,6 @@ mod tests {
     use super::*;
     use crate::manager::PredictionManager;
     use crate::plugin::{PredictionMarkerPlugin, PredictionPlugin};
-    use alloc::vec::Vec;
     use bevy_ecs::system::RunSystemOnce;
     use bevy_replicon::prelude::{
         AuthMethod, RepliconPlugins, RepliconSharedPlugin, RepliconTick, RuleFns,
@@ -1668,7 +1614,6 @@ mod tests {
     use bevy_replicon::shared::replication::registry::ReplicationRegistry;
     use bevy_replicon::shared::replication::registry::test_fns::TestFnsEntityExt;
     use bevy_state::app::StatesPlugin;
-    use core::hash::Hasher;
     use lightyear_core::prelude::LocalTimeline;
     use lightyear_interpolation::prelude::{
         InterpolationMarkerPlugin, InterpolationPlugin, InterpolationRegistrationExt,
@@ -1709,10 +1654,6 @@ mod tests {
         app.init_resource::<PredictionManager>();
         app.init_resource::<InputTimelineConfig>();
         app
-    }
-
-    fn hash_test_component(value: &TestComponent, hasher: &mut seahash::SeaHasher) {
-        hasher.write_u32(value.0);
     }
 
     fn parity_should_rollback(confirmed: &BuilderComponent, predicted: &BuilderComponent) -> bool {
@@ -2009,57 +1950,6 @@ mod tests {
                 .resource::<PredictionRegistry>()
                 .predicted::<LocalRollbackComponent>()
         );
-    }
-
-    #[test]
-    fn deterministic_hash_does_not_prune_prediction_history() {
-        let mut history = PredictionHistory::<TestComponent>::default();
-        history.add_predicted(Tick(10), Some(TestComponent(10)));
-        history.add_predicted(Tick(11), Some(TestComponent(11)));
-        history.add_predicted(Tick(12), Some(TestComponent(12)));
-
-        let before_len = history.len();
-        let mut hasher = seahash::SeaHasher::default();
-        let hash_fn = unsafe {
-            core::mem::transmute::<fn(&TestComponent, &mut seahash::SeaHasher), fn()>(
-                hash_test_component,
-            )
-        };
-        let hashed = PredictionRegistry::pop_until_tick_and_hash::<TestComponent>(
-            PtrMut::from(&mut history),
-            Tick(11),
-            &mut hasher,
-            hash_fn,
-        );
-
-        assert!(hashed);
-        assert_ne!(hasher.finish(), 0);
-        assert_eq!(history.len(), before_len);
-        assert_eq!(history.get(Tick(10)).unwrap().0, 10);
-        assert_eq!(history.get(Tick(11)).unwrap().0, 11);
-        assert_eq!(history.get(Tick(12)).unwrap().0, 12);
-    }
-
-    #[test]
-    fn deterministic_hash_reports_missing_prediction_history_value() {
-        let mut history = PredictionHistory::<TestComponent>::default();
-        let mut hasher = seahash::SeaHasher::default();
-        let initial_hash = hasher.finish();
-        let hash_fn = unsafe {
-            core::mem::transmute::<fn(&TestComponent, &mut seahash::SeaHasher), fn()>(
-                hash_test_component,
-            )
-        };
-
-        let hashed = PredictionRegistry::pop_until_tick_and_hash::<TestComponent>(
-            PtrMut::from(&mut history),
-            Tick(11),
-            &mut hasher,
-            hash_fn,
-        );
-
-        assert!(!hashed);
-        assert_eq!(hasher.finish(), initial_hash);
     }
 
     #[test]

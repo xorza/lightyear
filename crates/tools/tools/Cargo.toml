@@ -9,16 +9,8 @@ description = "Debugging and visualization tools for lightyear"
 repository = "https://github.com/cBournhonesque/lightyear"
 
 [features]
-default = ["std"]
-cli = ["std", "dep:clap"]
-std = [
-  "lightyear_link/std",
-  "lightyear_metrics/std",
-  "dep:bevy_log",
-  "dep:serde",
-  "dep:serde_json",
-  "dep:tracing-subscriber",
-]
+default = []
+cli = ["dep:clap"]
 test_utils = ["lightyear_metrics/test_utils"]
 replication = ["dep:lightyear_replication"]
 
@@ -33,16 +25,16 @@ lightyear_replication = { workspace = true, optional = true }
 metrics.workspace = true
 metrics-util.workspace = true
 clap = { workspace = true, optional = true }
-serde = { workspace = true, optional = true }
-serde_json = { workspace = true, optional = true }
+serde.workspace = true
+serde_json.workspace = true
 tracing.workspace = true
-tracing-subscriber = { workspace = true, optional = true }
+tracing-subscriber.workspace = true
 
 # bevy
 bevy_app.workspace = true
 bevy_color.workspace = true
 bevy_ecs.workspace = true
-bevy_log = { workspace = true, optional = true }
+bevy_log.workspace = true
 bevy_platform.workspace = true
 bevy_reflect.workspace = true
 bevy_ui.workspace = true

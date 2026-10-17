@@ -42,10 +42,6 @@ pub enum PeerId {
     /// The id is the SocketAddr of the link.
     #[reflect(ignore)]
     Raw(SocketAddr),
-    /// A client id that is unique between netcode connections
-    Netcode(u64),
-    /// The client id of a steam user
-    Steam(u64),
     /// A local client to use when running in HostServer mode
     Local(u64),
     /// Refers to the server
@@ -63,8 +59,6 @@ impl ToBytes for PeerId {
                     SocketAddr::V6(_) => 1 + 16 + 2,
                 }
             }
-            PeerId::Netcode(_) => 1 + 8,
-            PeerId::Steam(_) => 1 + 8,
             PeerId::Local(_) => 1 + 8,
             PeerId::Server => 1,
         }
@@ -97,14 +91,6 @@ impl ToBytes for PeerId {
                         buffer.write_u16(v6.port())?;
                     }
                 }
-            }
-            PeerId::Netcode(id) => {
-                buffer.write_u8(3)?;
-                buffer.write_u64(*id)?;
-            }
-            PeerId::Steam(id) => {
-                buffer.write_u8(4)?;
-                buffer.write_u64(*id)?;
             }
             PeerId::Local(id) => {
                 buffer.write_u8(5)?;
@@ -149,8 +135,6 @@ impl ToBytes for PeerId {
                 );
                 Ok(PeerId::Raw(addr))
             }
-            3 => Ok(PeerId::Netcode(buffer.read_u64()?)),
-            4 => Ok(PeerId::Steam(buffer.read_u64()?)),
             5 => Ok(PeerId::Local(buffer.read_u64()?)),
             6 => Ok(PeerId::Server),
             _ => Err(SerializationError::InvalidValue),
@@ -190,8 +174,6 @@ impl PeerId {
                     }
                 }
             }
-            PeerId::Netcode(x) => *x,
-            PeerId::Steam(x) => *x,
             PeerId::Local(x) => *x,
             PeerId::Server => 1,
         }
@@ -205,10 +187,5 @@ impl PeerId {
 impl core::fmt::Display for PeerId {
     fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
         core::fmt::Debug::fmt(self, f)
-        // match self {
-        //     ClientId::Netcode(id) => write!(f, "NetcodeClientId({})", id),
-        //     ClientId::Steam(id) => write!(f, "SteamClientId({})", id),
-        //     ClientId::LocalClient => write!(f, "LocalClientId"),
-        // }
     }
 }

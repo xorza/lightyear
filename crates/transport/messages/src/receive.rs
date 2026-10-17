@@ -3,7 +3,6 @@ use crate::plugin::{MAX_PENDING_TIMELINE_PAYLOADS, MAX_TIMELINE_LAG_TICKS, Messa
 use crate::registry::{MessageError, MessageKind, MessageModeMetadata, MessageRegistry};
 use crate::replicon_map::RepliconMapParam;
 use crate::{Message, MessageNetId};
-use alloc::vec::Vec;
 use bevy_ecs::{
     change_detection::MutUntyped,
     component::Component,
@@ -723,7 +722,6 @@ impl MessagePlugin {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use alloc::vec;
     use core::any::TypeId;
 
     #[derive(Debug, PartialEq)]

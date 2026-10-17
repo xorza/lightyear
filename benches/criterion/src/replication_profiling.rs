@@ -9,7 +9,7 @@ const N: usize = 10;
 
 const NUM_ENTITIES: usize = 1000;
 fn main() {
-    let mut stepper = ClientServerStepper::from_config(StepperConfig::with_netcode_clients(N));
+    let mut stepper = ClientServerStepper::from_config(StepperConfig::with_raw_clients(N));
     let components = vec![(CompFull(0.0), Replicate::to_clients(NetworkTarget::All)); NUM_ENTITIES];
     let entities = stepper
         .server_app

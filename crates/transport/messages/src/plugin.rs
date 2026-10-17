@@ -79,7 +79,7 @@ impl MessagePlugin {
                 .metadata
                 .values()
                 .map(|metadata| metadata.receive_component_id())
-                .collect::<alloc::vec::Vec<_>>()
+                .collect::<std::vec::Vec<_>>()
         };
 
         let entity = trigger.entity;
@@ -324,7 +324,6 @@ mod tests {
     use crate::send::MessageSender;
     use crate::send_trigger::EventSender;
     use crate::trigger::AppTriggerExt;
-    use alloc::{vec, vec::Vec};
     use bevy_ecs::event::Event;
     use bevy_ecs::prelude::{Component, Entity, ResMut, Resource};
     #[cfg(feature = "client")]

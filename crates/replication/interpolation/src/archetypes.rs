@@ -2,7 +2,6 @@ use crate::registry::{
     InterpolationArchetypeKey, InterpolationRegistry, RuleResolutionScratch, RuleTarget,
 };
 use crate::rules::{CachedInterpolationApply, CachedInterpolationComponent};
-use alloc::vec::Vec;
 use bevy_ecs::{
     archetype::{ArchetypeGeneration, ArchetypeId, Archetypes},
     change_detection::Tick as ChangeTick,
@@ -157,7 +156,7 @@ impl InterpolatedArchetypes {
                 self.policies[policy_id].archetype_ids.push(archetype.id());
             } else {
                 let mut policy = CachedInterpolationPolicy {
-                    archetype_ids: alloc::vec![archetype.id()],
+                    archetype_ids: std::vec![archetype.id()],
                     history_components: Vec::new(),
                     apply_callbacks: Vec::new(),
                 };

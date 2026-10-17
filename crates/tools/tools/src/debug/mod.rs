@@ -3,12 +3,9 @@
 pub mod component;
 pub mod metadata;
 pub mod schema;
-
-#[cfg(feature = "std")]
 pub mod tracing_layer;
 
 pub mod prelude {
-    #[cfg(feature = "std")]
     pub use crate::debug::component::log_component_json_value;
     pub use crate::debug::component::{
         LightyearDebug, LightyearDebugAppExt, LightyearDebugComponentPlugin,
@@ -27,15 +24,12 @@ pub mod prelude {
         LIGHTYEAR_DEBUG_TARGET_TIMELINE, LIGHTYEAR_DEBUG_TARGET_TRANSPORT,
         is_lightyear_debug_target,
     };
-    #[cfg(feature = "std")]
-    pub use crate::lightyear_debug_component_json;
-    pub use crate::{lightyear_debug_component, lightyear_debug_event};
-
-    #[cfg(feature = "std")]
     pub use crate::debug::tracing_layer::{
         LIGHTYEAR_DEBUG_FILE_ENV, LightyearDebugLayer, lightyear_debug_custom_layer,
         lightyear_debug_log_plugin, non_lightyear_debug_fmt_layer,
     };
+    pub use crate::lightyear_debug_component_json;
+    pub use crate::{lightyear_debug_component, lightyear_debug_event};
 }
 
 #[doc(hidden)]
@@ -100,7 +94,6 @@ macro_rules! lightyear_debug_component {
 }
 
 /// Emit a structured component snapshot row when the component implements `Serialize`.
-#[cfg(feature = "std")]
 #[macro_export]
 macro_rules! lightyear_debug_component_json {
     ($entity:expr, $component:expr, $sample_point:expr, $schedule:expr) => {{

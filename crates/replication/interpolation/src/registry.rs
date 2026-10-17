@@ -14,7 +14,6 @@ use crate::rules::{
     InterpolationRuleConfig, InterpolationRuleId, InterpolationSampleContext,
     TupleInterpolationBundle,
 };
-use alloc::vec::Vec;
 use bevy_app::App;
 use bevy_ecs::archetype::Archetype;
 use bevy_ecs::component::{ComponentId, Components};
@@ -534,7 +533,7 @@ where
     InterpolationRule::new::<C, F>(
         world.components(),
         fns,
-        alloc::vec![member],
+        std::vec![member],
         config.priority,
         apply_interpolation,
         apply_frame_interpolation,
@@ -1685,7 +1684,6 @@ mod tests {
     use super::*;
     use crate::interpolate::apply_interpolation;
     use crate::timeline::InterpolationTimeline;
-    use alloc::vec::Vec;
     use bevy_app::App;
     use bevy_ecs::component::Component;
     use bevy_ecs::system::RunSystemOnce;
@@ -2059,7 +2057,7 @@ mod tests {
             insert_confirmed_history::<TestComp2>,
         ));
 
-        let bundle_members = alloc::vec![
+        let bundle_members = std::vec![
             build_rule_member::<TestComp>(
                 &mut world,
                 true,
@@ -2149,21 +2147,21 @@ mod tests {
             owns_history,
             owns_apply,
         };
-        let cases = alloc::vec![
+        let cases = std::vec![
             (
                 "both live, no history yet",
                 both_live_no_history,
-                alloc::vec![ownership(bundle_rule, true, true)],
+                std::vec![ownership(bundle_rule, true, true)],
             ),
             (
                 "both live, one history missing",
                 both_live_first_history,
-                alloc::vec![ownership(bundle_rule, true, true)],
+                std::vec![ownership(bundle_rule, true, true)],
             ),
             (
                 "delayed insertion/removal of second member",
                 only_first_both_histories,
-                alloc::vec![
+                std::vec![
                     ownership(bundle_rule, true, false),
                     ownership(first_rule, false, true),
                 ],
@@ -2171,7 +2169,7 @@ mod tests {
             (
                 "delayed insertion/removal of first member",
                 only_second_both_histories,
-                alloc::vec![
+                std::vec![
                     ownership(bundle_rule, true, false),
                     ownership(second_rule, false, true),
                 ],
@@ -2179,22 +2177,22 @@ mod tests {
             (
                 "second member and its history absent",
                 only_first_own_history,
-                alloc::vec![ownership(first_rule, true, true)],
+                std::vec![ownership(first_rule, true, true)],
             ),
             (
                 "first member and its history absent",
                 only_second_own_history,
-                alloc::vec![ownership(second_rule, true, true)],
+                std::vec![ownership(second_rule, true, true)],
             ),
             (
                 "both histories retained, both live members absent",
                 histories_only,
-                alloc::vec![ownership(bundle_rule, true, false)],
+                std::vec![ownership(bundle_rule, true, false)],
             ),
             (
                 "no live members or histories",
                 no_live_or_history,
-                alloc::vec![],
+                std::vec![],
             ),
         ];
 

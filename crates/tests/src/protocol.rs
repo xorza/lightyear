@@ -1,18 +1,11 @@
-#[cfg(not(feature = "std"))]
-use alloc::string::String;
-use avian2d::prelude::*;
 use bevy::ecs::entity::MapEntities;
 use bevy::ecs::error::Result;
 use bevy::prelude::*;
-use bevy_enhanced_input::prelude::InputAction;
 use bevy_replicon::bytes::Bytes;
 use bevy_replicon::postcard_utils;
 use bevy_replicon::shared::replication::diff::Diffable as RepliconDiffable;
 use bevy_replicon::shared::replication::registry::ctx::{SerializeCtx, WriteCtx};
-use leafwing_input_manager::Actionlike;
-use lightyear::avian2d::plugin::AvianReplicationMode;
 use lightyear::frame_interpolation::FrameInterpolationPlugin;
-use lightyear::prelude::input::*;
 use lightyear::prelude::*;
 use lightyear_connection::direction::NetworkDirection;
 use lightyear_replication::diffable::Diffable as LightyearDiffable;
@@ -221,41 +214,8 @@ impl RepliconDiffable for CompRepliconDiff {
     }
 }
 
-// Native Inputs
-#[derive(Serialize, Deserialize, Debug, Default, PartialEq, Eq, Clone, Copy, Reflect)]
-pub struct NativeInput(pub i16);
-
-impl MapEntities for NativeInput {
-    fn map_entities<M: EntityMapper>(&mut self, entity_mapper: &mut M) {}
-}
-
-// Leafwing Inputs
-#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone, Copy, Hash, Reflect, Actionlike)]
-pub enum LeafwingInput1 {
-    Jump,
-}
-
-#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone, Copy, Hash, Reflect, Actionlike)]
-pub enum LeafwingInput2 {
-    Crouch,
-}
-
-// BEI Inputs
-#[derive(Serialize, Deserialize, Component, Clone, PartialEq, Debug, Reflect)]
-pub struct BEIContext;
-
-#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone, Copy, Hash, Reflect, InputAction)]
-#[action_output(bool)]
-pub struct BEIAction1;
-
-#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone, Copy, Hash, Reflect, InputAction)]
-#[action_output(Vec2)]
-pub struct BEIActionVec2;
-
 // Protocol
-pub struct ProtocolPlugin {
-    pub avian_mode: AvianReplicationMode,
-}
+pub struct ProtocolPlugin;
 impl Plugin for ProtocolPlugin {
     fn build(&self, app: &mut App) {
         // messages
@@ -349,52 +309,9 @@ impl Plugin for ProtocolPlugin {
             .replicate_diff()
             .predict_diff()
             .add_custom_interpolation_diff();
-        // inputs
-        app.add_plugins(native::InputPlugin::<NativeInput> {
-            config: InputConfig::<NativeInput> {
-                rebroadcast_inputs: true,
-                ..default()
-            },
-        });
-        app.add_plugins(leafwing::InputPlugin::<LeafwingInput1> {
-            config: InputConfig::<LeafwingInput1> {
-                rebroadcast_inputs: true,
-                ..default()
-            },
-        });
-        app.add_plugins(bei::InputPlugin::<BEIContext>::new(InputConfig::<
-            BEIContext,
-        > {
-            rebroadcast_inputs: true,
-            ..default()
-        }));
-        app.register_input_action::<BEIAction1>();
-        app.register_input_action::<BEIActionVec2>();
-
-        app.add_plugins(lightyear::avian2d::plugin::LightyearAvianPlugin {
-            replication_mode: self.avian_mode,
-            ..default()
-        });
-        app.add_plugins(
-            PhysicsPlugins::default()
-                .build()
-                // disable the position<>transform sync plugins as it is handled by lightyear_avian
-                .disable::<PhysicsTransformPlugin>()
-                .disable::<IslandSleepingPlugin>()
-                .disable::<PhysicsInterpolationPlugin>(),
-        );
-        // app.component::<Collider>().replicate();
 
         if !app.is_plugin_added::<FrameInterpolationPlugin>() {
             app.add_plugins(FrameInterpolationPlugin);
-        }
-
-        if self.avian_mode == AvianReplicationMode::Transform {
-            app.component::<Transform>()
-                .replicate()
-                .predict()
-                .add_interpolation_with(TransformLinearInterpolation::lerp)
-                .add_linear_correction::<Isometry2d>();
         }
     }
 }

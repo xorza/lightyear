@@ -23,17 +23,10 @@
 //! If the receiving connection does not contain the requested timeline, the
 //! message is rejected with [`MessageError::MissingTimeline`](registry::MessageError::MissingTimeline).
 
-#![no_std]
-
-extern crate alloc;
-#[cfg(feature = "std")]
-extern crate std;
-
 use bevy_ecs::component::{Component, ComponentId};
 use bevy_reflect::Reflect;
 
 use crate::registry::MessageKind;
-use alloc::vec::Vec;
 use lightyear_core::network::NetId;
 use lightyear_serde::entity_map::RemoteEntityMap;
 use lightyear_transport::prelude::Transport;

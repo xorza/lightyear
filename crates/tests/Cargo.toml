@@ -9,34 +9,13 @@ description = "Setup for integration tests for the lightyear networking library"
 repository = "https://github.com/cBournhonesque/lightyear"
 
 [features]
-default = ["std", "test_utils", "steam"]
-std = [
-  "bevy/std",
-  "bytes/std",
-  "serde/std",
-  "lightyear/std",
-  "lightyear_messages/std",
-  "lightyear_netcode/std",
-  "lightyear_serde/std",
-  "lightyear_sync/std",
-  "lightyear_transport/std",
-  "dep:lightyear_udp",
-]
+default = ["test_utils"]
 test_utils = [
   "lightyear_core/test_utils",
   "lightyear_transport/test_utils",
   "lightyear_replication/test_utils",
   "lightyear_prediction/test_utils",
   "lightyear_crossbeam/test_utils",
-  "lightyear_aeronet/test_utils",
-  "lightyear_udp?/test_utils",
-]
-steam = ["lightyear/steam"]
-webtransport = [
-  "std",
-  "lightyear/webtransport",
-  "lightyear/webtransport_self_signed",
-  "lightyear/webtransport_dangerous_configuration",
 ]
 
 [dependencies]
@@ -44,51 +23,27 @@ lightyear = { workspace = true, features = [
   "client",
   "server",
   "crossbeam",
-  "avian2d",
   "frame_interpolation",
   "metrics",
-  "netcode",
-  "input_native",
-  "input_bei",
-  "leafwing",
   "interpolation",
   "prediction",
   "raw_connection",
   "replication",
-  "deterministic",
 ] }
 lightyear_utils.workspace = true
 lightyear_serde.workspace = true
 lightyear_transport = { workspace = true, features = ["client", "server"] }
 lightyear_core.workspace = true
-lightyear_netcode = { workspace = true, features = ["client", "server"] }
 lightyear_messages = { workspace = true, features = ["client", "server"] }
 lightyear_raw_connection = { workspace = true, features = ["client", "server"] }
 lightyear_replication = { workspace = true, features = ["client", "server"] }
 lightyear_crossbeam.workspace = true
 lightyear_connection = { workspace = true, features = ["client", "server"] }
 lightyear_sync = { workspace = true, features = ["client", "server"] }
-lightyear_prediction = { workspace = true, features = ["deterministic"] }
-lightyear_deterministic_replication.workspace = true
-lightyear_inputs = { workspace = true, features = ["client", "server"] }
-lightyear_inputs_leafwing.workspace = true
-lightyear_avian2d = { workspace = true, features = ["deterministic", "2d"] }
+lightyear_prediction.workspace = true
 lightyear_link.workspace = true
-lightyear_aeronet.workspace = true
-lightyear_udp = { workspace = true, features = ["server"], optional = true }
 
 bevy_replicon.workspace = true
-
-avian2d = { workspace = true, features = [
-  "2d",
-  "f32",
-  "parry-f32",
-  "serialize",
-] }
-
-# inputs
-leafwing-input-manager.workspace = true
-bevy_enhanced_input.workspace = true
 
 # utils
 tracing.workspace = true

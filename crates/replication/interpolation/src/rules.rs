@@ -16,7 +16,6 @@ use self::frame_interpolate::{
     ErasedApplyFrameInterpolationFn, ErasedRestoreFrameHistoryFn, ErasedUpdateFrameHistoryFn,
 };
 use crate::registry::InterpolationRegistry;
-use alloc::{boxed::Box, vec::Vec};
 use bevy_ecs::archetype::Archetype;
 use bevy_ecs::component::{ComponentId, Components, StorageType};
 use bevy_ecs::prelude::{Commands, Entity};

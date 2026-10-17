@@ -1,12 +1,11 @@
 //! Channel send state and delivery policies.
 
-use alloc::collections::VecDeque;
-use alloc::vec::Vec;
 use bevy_time::{Real, Time, Timer, TimerMode};
 use bevy_utils::prelude::DebugName;
 use bytes::Bytes;
 use core::time::Duration;
 use lightyear_link::LinkStats;
+use std::collections::VecDeque;
 
 use crate::channel::builder::{ChannelMode, ChannelSettings};
 use crate::channel::registry::{ChannelId, ChannelKind};
@@ -498,7 +497,6 @@ mod tests {
     use crate::channel::builder::ReliableSettings;
     use crate::packet::message::FragmentIndex;
     use crate::packet::packet::FRAGMENT_SIZE;
-    use alloc::vec;
 
     struct TestChannel;
 

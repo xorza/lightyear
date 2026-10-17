@@ -13,8 +13,7 @@
 //! connection. For handshake-less use, pair it with
 //! `lightyear_raw_connection::client::RawConnectionPlugin` and/or
 //! `lightyear_raw_connection::server::RawConnectionPlugin` and mark entities with `RawClient` /
-//! `RawServer` so that [`Linked`] implies `Connected`. For authenticated use, pair it with
-//! `lightyear_netcode`.
+//! `RawServer` so that [`Linked`] implies `Connected`.
 //!
 //! ### Spawning crossbeam entities
 //!
@@ -37,12 +36,8 @@
 //!     .id();
 //! commands.trigger(Connect { entity: client });  // Connect → LinkStart internally
 //! ```
-#![no_std]
-
-extern crate alloc;
 
 use aeronet_io::connection::{LocalAddr, PeerAddr};
-use alloc::string::String;
 use bevy_app::{App, Plugin, PostUpdate, PreUpdate};
 use bevy_ecs::prelude::*;
 use bevy_ecs::query::QueryData;
@@ -376,7 +371,7 @@ mod tests {
             .expect("client entity should have Link");
         client_link.send.push(Bytes::from_static(b"a"));
         client_link.send.push(Bytes::from_static(b"b"));
-        let shared = Bytes::from(alloc::vec![b'c']);
+        let shared = Bytes::from(std::vec![b'c']);
         client_link.send.push(shared.clone());
 
         // Two frames: frame 1 client.PostUpdate `send` pushes into the channel,

@@ -4,7 +4,6 @@ use crate::registry::MessageMetricHandles;
 use crate::registry::{MessageError, MessageKind, MessageModeMetadata, MessageRegistry};
 use crate::replicon_map::RepliconMapParam;
 use crate::{Message, MessageManager, MessageNetId};
-use alloc::vec::Vec;
 use bevy_ecs::lifecycle::HookContext;
 use bevy_ecs::{
     change_detection::MutUntyped,

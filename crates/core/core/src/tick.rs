@@ -154,7 +154,6 @@ impl AtomicTick {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use alloc::vec;
     use std::thread;
     use test_log::test;
 

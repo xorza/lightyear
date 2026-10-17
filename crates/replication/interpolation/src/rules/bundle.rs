@@ -15,7 +15,6 @@ use crate::registry::{
 };
 use crate::rules::InterpolationRuleComponent;
 use crate::rules::frame_interpolate::FrameInterpolationContext;
-use alloc::vec::Vec;
 use bevy_app::App;
 use bevy_ecs::archetype::Archetype;
 use bevy_ecs::query::ArchetypeFilter;
@@ -449,7 +448,7 @@ macro_rules! impl_interpolation_bundle {
                 include_interpolation_history: bool,
                 include_frame_history: bool,
             ) -> Vec<InterpolationRuleComponent> {
-                alloc::vec![
+                std::vec![
                     interpolation_rule_member::<$C0>(
                         app,
                         include_interpolation_history,

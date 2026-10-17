@@ -1,5 +1,4 @@
 use crate::{FrameInterpolate, SkipFrameInterpolation};
-use alloc::vec::Vec;
 use bevy_ecs::{
     archetype::{ArchetypeGeneration, ArchetypeId, Archetypes},
     change_detection::Tick as ChangeTick,
@@ -162,7 +161,7 @@ impl FrameInterpolatedArchetypes {
                 }
                 let policy_id = self.policies.len();
                 self.policies.push(CachedFrameInterpolationPolicy {
-                    archetype_ids: alloc::vec![archetype.id()],
+                    archetype_ids: std::vec![archetype.id()],
                     skip_interpolation: archetype
                         .contains(self.skip_frame_interpolation_component_id),
                     history_components,

@@ -1,6 +1,5 @@
 //! The process-global metrics registry.
 
-use alloc::vec::Vec;
 use bevy_ecs::prelude::{Res, Resource};
 use bevy_platform::sync::{Arc, atomic::Ordering};
 use metrics::atomics::AtomicU64;
@@ -10,11 +9,9 @@ use metrics_util::{
     registry::{AtomicStorage, Registry},
     storage::AtomicBucket,
 };
-#[cfg(feature = "std")]
 use {metrics::set_global_recorder, std::sync::LazyLock};
 
 /// In some cases it can be convenient to use a global registry instead of the [`MetricsRegistry`] resource
-#[cfg(feature = "std")]
 pub static GLOBAL_RECORDER: LazyLock<MetricsRegistry> = LazyLock::new(|| {
     let registry = MetricsRegistry::default();
     _ = set_global_recorder(registry.clone());
@@ -39,8 +36,6 @@ impl MetricsRegistry {
             MetricKind::Histogram => self.get_histogram_mean(key.key()),
         }
     }
-
-    #[cfg(feature = "std")]
     pub fn fetch_global_metric_value(key: &CompositeKey) -> Option<f64> {
         GLOBAL_RECORDER.fetch_metric_value(key)
     }

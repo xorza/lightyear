@@ -412,7 +412,6 @@ mod tests {
     use crate::rules::{
         InterpolationFns, InterpolationFnsExt, InterpolationRuleConfig, InterpolationSampleContext,
     };
-    use alloc::vec;
     use bevy_app::{App, Update};
     use bevy_ecs::archetype::Archetype;
     use bevy_ecs::component::Component;

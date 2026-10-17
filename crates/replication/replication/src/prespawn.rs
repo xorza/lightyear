@@ -8,7 +8,6 @@ use crate::prelude::{InterpolatedSend, InterpolationTarget};
 use crate::prelude::{PredictedSend, PredictionTarget};
 use crate::receive::ReplicationReceiver;
 use crate::registry::{ComponentKind, ComponentRegistry};
-use alloc::vec::Vec;
 use bevy_app::{App, Plugin, PostUpdate};
 use bevy_ecs::archetype::Archetype;
 use bevy_ecs::component::Components;

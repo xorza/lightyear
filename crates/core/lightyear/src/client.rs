@@ -37,34 +37,14 @@ impl PluginGroup for ClientPlugins {
             tick_duration: self.tick_duration,
         });
 
-        #[cfg(feature = "p2p")]
-        let builder = builder.add(lightyear_p2p::P2PSessionPlugin);
-
         #[cfg(feature = "replication")]
         let builder = builder.add(LightyearRepliconClientBackend);
 
         #[cfg(feature = "prediction")]
         let builder = builder.add(lightyear_prediction::plugin::PredictionPlugin);
 
-        // IO
-        #[cfg(feature = "webtransport")]
-        let builder = builder.add(lightyear_webtransport::client::WebTransportClientPlugin);
-        #[cfg(feature = "websocket")]
-        let builder = builder.add(lightyear_websocket::client::WebSocketClientPlugin);
-        #[cfg(feature = "steam")]
-        let builder = builder.add(lightyear_steam::client::SteamClientPlugin);
-
-        // CONNECTION
-        #[cfg(feature = "netcode")]
-        let builder = builder.add(lightyear_netcode::client_plugin::NetcodeClientPlugin);
         #[cfg(feature = "raw_connection")]
         let builder = builder.add(lightyear_raw_connection::client::RawConnectionPlugin);
-
-        #[cfg(target_family = "wasm")]
-        let builder = builder.add(lightyear_web::WebKeepalivePlugin {
-            // The interval is in milliseconds. We can run app.update() infrequently when in the background
-            wake_delay: 100.0,
-        });
 
         builder
     }

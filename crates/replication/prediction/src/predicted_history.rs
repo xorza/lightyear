@@ -836,7 +836,7 @@ mod tests {
 
         app.update();
 
-        let ticks = |app: &App| -> alloc::vec::Vec<Tick> {
+        let ticks = |app: &App| -> std::vec::Vec<Tick> {
             let history = app
                 .world()
                 .get::<ConfirmedHistory<TestValue>>(entity)

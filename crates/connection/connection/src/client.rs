@@ -1,5 +1,4 @@
 use crate::network_topology::NetworkingMetadata;
-use alloc::string::String;
 use bevy_app::{App, Plugin};
 use bevy_ecs::lifecycle::HookContext;
 use bevy_ecs::prelude::*;

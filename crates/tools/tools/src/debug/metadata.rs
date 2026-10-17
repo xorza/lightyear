@@ -1,7 +1,7 @@
 //! Link-level metadata shared by debug sampling systems.
 
-use alloc::string::{String, ToString};
 use core::sync::atomic::{AtomicU64, Ordering};
+use std::string::{String, ToString};
 
 use bevy_app::{App, First, Plugin, PreUpdate};
 use bevy_ecs::prelude::*;
@@ -151,9 +151,7 @@ fn client_id(local_id: Option<PeerId>, remote_id: Option<PeerId>, is_server: boo
 
 fn peer_numeric_id(peer_id: PeerId) -> Option<u64> {
     match peer_id {
-        PeerId::Entity(id) | PeerId::Netcode(id) | PeerId::Steam(id) | PeerId::Local(id) => {
-            Some(id)
-        }
+        PeerId::Entity(id) | PeerId::Local(id) => Some(id),
         PeerId::Raw(_) | PeerId::Server => None,
     }
 }

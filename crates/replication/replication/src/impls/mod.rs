@@ -2,12 +2,6 @@ use crate::diffable::Diffable;
 use bevy_math::{Isometry2d, Isometry3d, Quat, Rot2, Vec3};
 use bevy_transform::prelude::Transform;
 
-#[cfg(feature = "avian2d")]
-mod avian2d;
-
-#[cfg(feature = "avian3d")]
-mod avian3d;
-
 impl Diffable<Isometry2d> for Transform {
     fn base_value() -> Self {
         Transform::default()

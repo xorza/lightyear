@@ -5,7 +5,6 @@ use crate::packet::compression::{
 };
 use crate::packet::message::{FragmentCompression, FragmentData, FragmentIndex, MessageId};
 use crate::packet::packet::FRAGMENT_SIZE;
-use alloc::vec::Vec;
 use bytes::Bytes;
 use tracing::trace;
 
@@ -113,7 +112,6 @@ fn fragment_compression(compression: CompressionConfig) -> Option<FragmentCompre
 
 #[cfg(test)]
 mod tests {
-    use alloc::vec;
 
     use bytes::Bytes;
 

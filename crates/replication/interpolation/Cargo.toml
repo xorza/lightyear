@@ -9,9 +9,8 @@ description = "IO primitives for the lightyear networking library"
 repository = "https://github.com/cBournhonesque/lightyear"
 
 [features]
-default = ["std"]
-std = ["lightyear_replication/std"]
-metrics = ["dep:metrics", "std"]
+default = []
+metrics = ["dep:metrics"]
 
 [dependencies]
 lightyear_utils.workspace = true

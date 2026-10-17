@@ -10,8 +10,7 @@ repository = "https://github.com/cBournhonesque/lightyear"
 
 [features]
 default = []
-std = ["bevy_ecs/std", "bevy_platform/std", "bevy_reflect/std"]
-metrics = ["dep:metrics", "std"]
+metrics = ["dep:metrics"]
 
 [dependencies]
 # utils

@@ -9,18 +9,14 @@ description = "IO primitives for the lightyear networking library"
 repository = "https://github.com/cBournhonesque/lightyear"
 
 [features]
-default = ["std"]
-std = ["lightyear_transport/std"]
+default = []
 client = ["lightyear_sync/client"]
 server = ["lightyear_connection/server"]
 prediction = []
 interpolation = []
-deterministic = []
 trace = []
-metrics = ["dep:metrics", "std", "lightyear_utils/metrics"]
+metrics = ["dep:metrics", "lightyear_utils/metrics"]
 test_utils = []
-avian2d = ["dep:avian2d"]
-avian3d = ["dep:avian3d"]
 
 [dependencies]
 lightyear_link.workspace = true
@@ -63,11 +59,6 @@ bevy_utils.workspace = true
 # replication
 bevy_replicon.workspace = true
 
-# avian
-avian2d = { workspace = true, optional = true }
-avian3d = { workspace = true, optional = true }
-
-
 [dev-dependencies]
 test-log.workspace = true
 
@@ -76,4 +67,3 @@ workspace = true
 
 [package.metadata.docs.rs]
 all-features = true
-features = ["avian2d/2d", "avian2d/f32", "avian3d/3d", "avian3d/f32"]

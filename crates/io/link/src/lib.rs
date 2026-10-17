@@ -2,10 +2,8 @@
 //!
 //! A [`Link`] is Lightyear's transport-neutral boundary between higher-level networking
 //! systems and concrete IO backends. Protocol, connection, replication, and message systems
-//! read from and write to [`Link`] buffers; transport crates such as `lightyear_udp`,
-//! `lightyear_webtransport`, `lightyear_websocket`, `lightyear_steam`, and
-//! `lightyear_crossbeam` are responsible for moving byte payloads across an actual network or
-//! in-process channel.
+//! read from and write to [`Link`] buffers; IO crates such as `lightyear_crossbeam` are
+//! responsible for moving byte payloads across an actual network or in-process channel.
 //!
 //! The crate deliberately keeps the IO abstraction narrow:
 //! - [`RecvPayload`] and [`SendPayload`] are opaque byte payloads.
@@ -18,21 +16,15 @@
 //!   keep [`Link::state`] synchronized with the entity lifecycle.
 //!
 //! Server-side fan-out relationships live in [`server`].
-#![no_std]
-
-extern crate alloc;
-#[cfg(feature = "std")]
-extern crate std;
 
 mod conditioner;
 mod mtu;
 pub mod server;
 
-use alloc::{collections::vec_deque::Drain, string::String};
+use std::collections::vec_deque::Drain;
 
 pub use crate::conditioner::LinkConditioner;
 pub use crate::mtu::{DEFAULT_MTU, LinkMtu, MtuTooSmall};
-use alloc::collections::VecDeque;
 use bevy_app::{App, Plugin, PostUpdate, PreUpdate};
 use bevy_ecs::lifecycle::HookContext;
 use bevy_ecs::prelude::*;
@@ -43,6 +35,7 @@ use core::ops::Deref;
 use core::time::Duration;
 use lightyear_core::time::Instant;
 use lightyear_utils::adaptive_for_each_mut;
+use std::collections::VecDeque;
 
 pub mod prelude {
     pub use crate::conditioner::{LinkConditionerConfig, LinkConditionerState};
@@ -153,8 +146,7 @@ pub enum LinkState {
 ///
 /// `Link` is an ECS component owned by the entity that represents a local transport endpoint or a
 /// remote peer. It only stores buffered payloads and lifecycle/statistics state; concrete IO is
-/// handled by transport-specific components in crates such as `lightyear_udp`,
-/// `lightyear_crossbeam`, `lightyear_webtransport`, or `lightyear_steam`.
+/// handled by transport-specific components in IO crates such as `lightyear_crossbeam`.
 ///
 /// Incoming bytes flow: transport -> [`LinkReceiver`] -> higher-level systems.
 /// Outgoing bytes flow: higher-level systems -> [`LinkSender`] -> transport.
@@ -593,7 +585,7 @@ mod tests {
         assert_eq!(RecvPayload::from(mutable).freeze().as_ptr(), allocation);
 
         // A frozen payload whose allocation is shared stays a view of it.
-        let bytes = Bytes::from(alloc::vec![1, 2, 3]);
+        let bytes = Bytes::from(std::vec![1, 2, 3]);
         let shared = bytes.clone();
         assert_eq!(RecvPayload::from(bytes).freeze().as_ptr(), shared.as_ptr());
     }
@@ -604,11 +596,11 @@ mod tests {
         let allocation = mutable.as_ptr();
         assert_eq!(RecvPayload::from(mutable).into_mut().as_ptr(), allocation);
 
-        let unique = Bytes::from(alloc::vec![1, 2, 3]);
+        let unique = Bytes::from(std::vec![1, 2, 3]);
         let allocation = unique.as_ptr();
         assert_eq!(RecvPayload::from(unique).into_mut().as_ptr(), allocation);
 
-        let bytes = Bytes::from(alloc::vec![1, 2, 3]);
+        let bytes = Bytes::from(std::vec![1, 2, 3]);
         let shared = bytes.clone();
         let payload = RecvPayload::from(bytes).into_mut();
         assert_ne!(payload.as_ptr(), shared.as_ptr());

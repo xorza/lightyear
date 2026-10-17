@@ -4,10 +4,6 @@
 //! uncompressed so receivers can parse packet ids, acks, ticks, and the packet type
 //! before deciding whether the payload body needs decompression.
 
-#[cfg(feature = "compression_lz4")]
-use alloc::vec;
-use alloc::vec::Vec;
-
 use crate::packet::error::PacketError;
 use crate::packet::header::PacketHeader;
 use crate::packet::packet::{HEADER_BYTES, Packet, PacketCompressionInfo};

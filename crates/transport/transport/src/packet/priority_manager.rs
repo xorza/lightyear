@@ -1,6 +1,5 @@
 use crate::channel::registry::ChannelRegistry;
 use crate::packet::message::{MessageData, SendCandidate};
-use alloc::vec::Vec;
 use core::num::NonZeroU32;
 use governor::{DefaultDirectRateLimiter, Quota};
 use lightyear_serde::ToBytes;
@@ -201,7 +200,6 @@ mod tests {
         FragmentCompression, FragmentData, FragmentIndex, MessageData, MessageId, SendCandidate,
         SendMessage, SendMessageKey, SingleData,
     };
-    use alloc::vec;
     use bytes::Bytes;
 
     struct PingLikeChannel;

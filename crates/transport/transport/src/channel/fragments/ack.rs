@@ -1,7 +1,6 @@
 //! Fragment acknowledgement tracking for channel sends.
 
 use crate::packet::message::{FragmentIndex, MessageId};
-use alloc::{vec, vec::Vec};
 use bevy_platform::collections::HashMap;
 use core::time::Duration;
 use tracing::trace;
