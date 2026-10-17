@@ -4,10 +4,14 @@ use bevy::ecs::entity::UniqueEntityArray;
 use bevy::prelude::*;
 use bevy_replicon::shared::server_entity_map::ServerEntityMap;
 use core::fmt::Debug;
-use lightyear::prelude::Message;
-use lightyear::prelude::*;
 use lightyear_connection::network_topology::NetworkingMetadata;
+use lightyear_connection::prelude::*;
+use lightyear_core::prelude::*;
+use lightyear_link::prelude::*;
+use lightyear_messages::Message;
 use lightyear_messages::multi::MultiMessageSender;
+use lightyear_messages::prelude::*;
+use lightyear_replication::prelude::*;
 use test_log::test;
 use tracing::trace;
 

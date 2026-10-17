@@ -6,7 +6,7 @@ use crate::protocol::{
 use crate::stepper::{ClientServerStepper, StepperConfig};
 use bevy::prelude::*;
 use core::time::Duration;
-use lightyear::frame_interpolation::FrameInterpolationHistory;
+use lightyear_core::frame_interpolation::FrameInterpolationHistory;
 use lightyear_core::prelude::Tick;
 use lightyear_prediction::correction::PreviousVisual;
 use lightyear_prediction::predicted_history::PredictionHistory;

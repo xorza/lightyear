@@ -1,10 +1,10 @@
 use crate::stepper::{ClientServerStepper, StepperConfig};
 use core::time::Duration;
-use lightyear::interpolation::timeline::InterpolationConfig;
-use lightyear::prelude::InterpolationTimeline;
 use lightyear_core::tick::Tick;
 use lightyear_core::time::TickInstant;
 use lightyear_core::timeline::NetworkTimeline;
+use lightyear_interpolation::timeline::InterpolationConfig;
+use lightyear_interpolation::timeline::InterpolationTimeline;
 use lightyear_sync::prelude::client::{InputDelayConfig, RemoteTimeline};
 use lightyear_sync::prelude::{InputTimelineConfig, LocalTimelineSync, PingManager, SyncConfig};
 use lightyear_sync::timeline::sync::{SyncTargetTimeline, TimelineSync};

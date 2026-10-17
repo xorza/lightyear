@@ -1,0 +1,60 @@
+[package]
+name = "lightyear_prediction"
+publish = false
+version = "0.30.1"
+authors.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+description = "IO primitives for the lightyear networking library"
+repository = "https://github.com/cBournhonesque/lightyear"
+
+[features]
+default = []
+server = ["dep:lightyear_messages"]
+metrics = ["dep:metrics", "lightyear_utils/metrics"]
+test_utils = []
+
+[dependencies]
+lightyear_utils.workspace = true
+lightyear_core = { workspace = true }
+lightyear_connection = { workspace = true }
+lightyear_replication = { workspace = true, features = [
+  "prediction",
+  "interpolation",
+] }
+lightyear_sync.workspace = true
+lightyear_messages = { workspace = true, optional = true }
+lightyear_interpolation.workspace = true
+
+# replication
+bevy_replicon.workspace = true
+
+# utils
+indexmap.workspace = true
+metrics = { workspace = true, optional = true }
+parking_lot.workspace = true
+tracing.workspace = true
+
+# serde
+serde.workspace = true
+
+# bevy
+bevy_app.workspace = true
+bevy_diagnostic.workspace = true
+bevy_derive.workspace = true
+bevy_ecs.workspace = true
+bevy_math = { workspace = true, features = ["curve"] }
+bevy_platform.workspace = true
+bevy_reflect.workspace = true
+bevy_time.workspace = true
+bevy_utils.workspace = true
+
+[dev-dependencies]
+bevy_state.workspace = true
+
+[lints]
+workspace = true
+
+[package.metadata.docs.rs]
+all-features = true

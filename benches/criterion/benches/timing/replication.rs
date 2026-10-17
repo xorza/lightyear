@@ -3,8 +3,9 @@
 
 use bevy::prelude::With;
 use core::time::Duration;
-use lightyear::prelude::{NetworkTarget, Replicate};
 use lightyear_benches::profiler::FlamegraphProfiler;
+use lightyear_connection::network_target::NetworkTarget;
+use lightyear_replication::send::Replicate;
 use std::time::Instant;
 
 use criterion::{Criterion, criterion_group, criterion_main};

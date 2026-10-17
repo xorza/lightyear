@@ -1,0 +1,55 @@
+[package]
+name = "lightyear_messages"
+publish = false
+version = "0.30.1"
+authors.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+description = "IO primitives for the lightyear networking library"
+repository = "https://github.com/cBournhonesque/lightyear"
+
+[features]
+default = []
+client = ["lightyear_connection/client"]
+server = ["lightyear_link", "lightyear_connection/server"]
+test_utils = []
+metrics = ["dep:metrics"]
+replicon = ["dep:bevy_replicon"]
+
+[dependencies]
+lightyear_link = { workspace = true, optional = true }
+lightyear_utils.workspace = true
+lightyear_serde.workspace = true
+lightyear_core.workspace = true
+lightyear_transport.workspace = true
+lightyear_connection.workspace = true
+
+# utils
+metrics = { workspace = true, optional = true }
+tracing.workspace = true
+thiserror.workspace = true
+
+# serde
+serde.workspace = true
+bytes.workspace = true
+
+# bevy
+bevy_app.workspace = true
+bevy_ecs = { workspace = true, features = ["serialize"] }
+bevy_reflect.workspace = true
+bevy_utils.workspace = true
+
+# optional integration with replicon's shared entity map (no_std compatible)
+bevy_replicon = { workspace = true, optional = true }
+
+[dev-dependencies]
+lightyear_link.workspace = true
+lightyear_transport = { workspace = true, features = ["test_utils"] }
+test-log.workspace = true
+
+[lints]
+workspace = true
+
+[package.metadata.docs.rs]
+all-features = true

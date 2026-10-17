@@ -7,14 +7,15 @@ use crate::stepper::*;
 use bevy::prelude::{Bundle, Entity, Name, With, World};
 use bevy_replicon::prelude::RepliconTick;
 use bevy_replicon::shared::server_entity_map::ServerEntityMap;
-use lightyear::prelude::{ConfirmedHistory, InterpolationTimeline};
 use lightyear_connection::client::{Disconnected, DisconnectedReason};
 use lightyear_connection::network_target::NetworkTarget;
+use lightyear_core::confirmed_history::ConfirmedHistory;
 use lightyear_core::interpolation::Interpolated;
 use lightyear_core::prediction::Predicted;
 use lightyear_core::prelude::{LocalTimeline, NetworkTimeline};
 use lightyear_core::tick::Tick;
 use lightyear_core::time::TickInstant;
+use lightyear_interpolation::timeline::InterpolationTimeline;
 use lightyear_messages::MessageManager;
 use lightyear_replication::control::{ControlledBy, ControlledByRemote};
 use lightyear_replication::prelude::*;
@@ -182,7 +183,7 @@ fn test_spawn_new_connection() {
         .unwrap();
 
     // second client connects
-    stepper.new_client(ClientType::Raw, None);
+    stepper.new_client(ClientType::Raw);
     stepper.init();
 
     // make sure the entity is also replicated to the newly connected client
@@ -219,7 +220,7 @@ fn test_spawn_new_connection_respects_replication_target() {
         .expect("entity is not present in target client entity map");
 
     // second client connects
-    stepper.new_client(ClientType::Raw, None);
+    stepper.new_client(ClientType::Raw);
     stepper.init();
 
     // make sure the entity is not replicated to the newly connected client
@@ -282,7 +283,7 @@ fn test_spawn_new_connection_respects_rooms() {
 
     // second client connects; it joins room B before its link is admitted
     // into replication (same as inserting client Rooms in `On<Add, Connected>`)
-    stepper.new_client(ClientType::Raw, None);
+    stepper.new_client(ClientType::Raw);
     stepper
         .server_app
         .world_mut()
@@ -841,7 +842,7 @@ fn test_late_join_client_gets_predicted_marker_for_prediction_target_all() {
         "the sender-only prediction marker must not be materialized on the receiver"
     );
 
-    stepper.new_client(ClientType::Raw, None);
+    stepper.new_client(ClientType::Raw);
     stepper.init();
     stepper.frame_step(3);
 
@@ -929,7 +930,7 @@ fn test_late_join_client_gets_latest_state_for_existing_predicted_entity() {
         stepper.frame_step(1);
     }
 
-    stepper.new_client(ClientType::Raw, None);
+    stepper.new_client(ClientType::Raw);
     stepper.init();
     stepper.frame_step(3);
 
@@ -2374,7 +2375,7 @@ fn test_prediction_target_visibility_late_join() {
     );
 
     // Now client 1 connects (late join)
-    stepper.new_client(ClientType::Raw, None);
+    stepper.new_client(ClientType::Raw);
     stepper.init();
 
     let client_1_id = stepper.client_of(1).get::<RemoteId>().unwrap().0;
@@ -2566,7 +2567,7 @@ fn test_prediction_visibility_observer_spawn_late_join() {
     );
 
     // Now client 1 joins late
-    stepper.new_client(ClientType::Raw, None);
+    stepper.new_client(ClientType::Raw);
     stepper.init();
     stepper.frame_step(3);
 

@@ -1,10 +1,10 @@
 use crate::protocol::StringMessage;
 use crate::stepper::*;
-use lightyear::prelude::InterpolationTimeline;
 use lightyear_connection::client::{Connect, Connected, Connecting};
 use lightyear_connection::host::{HostClient, HostServer};
 use lightyear_connection::server::{Start, Started};
 use lightyear_core::id::{LocalId, RemoteId};
+use lightyear_interpolation::timeline::InterpolationTimeline;
 use lightyear_link::Linked;
 use lightyear_messages::MessageManager;
 use lightyear_messages::prelude::{EventSender, MessageReceiver, MessageSender};

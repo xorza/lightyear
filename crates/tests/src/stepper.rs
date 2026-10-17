@@ -1,4 +1,5 @@
 use crate::protocol::ProtocolPlugin;
+use aeronet_io::connection::PeerAddr;
 use bevy::MinimalPlugins;
 use bevy::app::PluginsState;
 use bevy::input::InputPlugin;
@@ -8,12 +9,21 @@ use bevy::state::app::StatesPlugin;
 use bevy::time::TimeUpdateStrategy;
 use core::net::{Ipv4Addr, SocketAddr};
 use core::time::Duration;
-use lightyear::prelude::{client::*, server::*, *};
+use lightyear_connection::prelude::client::*;
+use lightyear_connection::prelude::server::*;
+use lightyear_connection::raw::client::RawClient;
+use lightyear_connection::raw::server::RawServer;
+use lightyear_core::prelude::*;
 #[cfg(feature = "test_utils")]
 use lightyear_core::test::TestHelper;
-use lightyear_raw_connection::client::RawClient;
-use lightyear_raw_connection::server::RawServer;
+use lightyear_interpolation::prelude::*;
+use lightyear_link::prelude::server::*;
+use lightyear_link::prelude::*;
+use lightyear_prediction::prelude::*;
+use lightyear_replication::prelude::*;
 use lightyear_replication::receive::ReplicationReceiver;
+use lightyear_sync::prelude::client::*;
+use lightyear_sync::prelude::*;
 
 pub const TICK_DURATION: Duration = Duration::from_millis(10);
 
@@ -84,8 +94,6 @@ pub struct StepperConfig {
     pub tick_duration: Duration,
     pub clients: Vec<ClientType>,
     pub init: bool,
-    pub server_registry: Option<MetricsRegistry>,
-    pub client_registry: Option<MetricsRegistry>,
 }
 
 impl StepperConfig {
@@ -110,21 +118,15 @@ impl StepperConfig {
             tick_duration: TICK_DURATION,
             clients,
             init: true,
-            server_registry: None,
-            client_registry: None,
         }
     }
 }
 
 impl ClientServerStepper {
     pub fn from_config(config: StepperConfig) -> Self {
-        let mut stepper = Self::new_server(
-            config.tick_duration,
-            config.frame_duration,
-            config.server_registry.clone(),
-        );
+        let mut stepper = Self::new_server(config.tick_duration, config.frame_duration);
         for client_type in config.clients {
-            stepper.new_client(client_type, config.client_registry.clone());
+            stepper.new_client(client_type);
         }
         if config.init {
             stepper.init();
@@ -134,11 +136,7 @@ impl ClientServerStepper {
 }
 
 impl ClientServerStepper {
-    pub fn new_server(
-        tick_duration: Duration,
-        frame_duration: Duration,
-        metrics_registry: Option<MetricsRegistry>,
-    ) -> Self {
+    pub fn new_server(tick_duration: Duration, frame_duration: Duration) -> Self {
         let mut server_app = App::new();
         // NOTE: we add LogPlugin so that tracing works
         server_app.add_plugins((
@@ -147,9 +145,11 @@ impl ClientServerStepper {
             StatesPlugin,
             InputPlugin,
             LogPlugin::default(),
-            MetricsPlugin::new(metrics_registry),
         ));
-        server_app.add_plugins((server::ServerPlugins { tick_duration }, RoomPlugin));
+        server_app.add_plugins((
+            lightyear::server::ServerPlugins { tick_duration },
+            RoomPlugin,
+        ));
         server_app.add_observer(configure_server_link);
         // ProtocolPlugin needs to be added AFTER InputPlugin
         server_app.add_plugins(ProtocolPlugin);
@@ -169,11 +169,7 @@ impl ClientServerStepper {
         }
     }
 
-    pub fn new_client(
-        &mut self,
-        client_type: ClientType,
-        metrics_registry: Option<MetricsRegistry>,
-    ) -> usize {
+    pub fn new_client(&mut self, client_type: ClientType) -> usize {
         let mut client_app = App::new();
         client_app.add_plugins((
             MinimalPlugins,
@@ -181,10 +177,9 @@ impl ClientServerStepper {
             StatesPlugin,
             InputPlugin,
             LogPlugin::default(),
-            MetricsPlugin::new(metrics_registry),
         ));
 
-        client_app.add_plugins(client::ClientPlugins {
+        client_app.add_plugins(lightyear::client::ClientPlugins {
             tick_duration: self.tick_duration,
         });
         // ProtocolPlugin needs to be added AFTER ClientPlugins, InputPlugin, because we need the PredictionRegistry to exist
@@ -196,9 +191,10 @@ impl ClientServerStepper {
         if client_type == ClientType::Host {
             // for host client we don't need auth
             // the server app will contain both client and server plugins
-            self.server_app.add_plugins(client::ClientPlugins {
-                tick_duration: self.tick_duration,
-            });
+            self.server_app
+                .add_plugins(lightyear::client::ClientPlugins {
+                    tick_duration: self.tick_duration,
+                });
             self.host_client_entity = Some(
                 self.server_app
                     .world_mut()
@@ -228,7 +224,8 @@ impl ClientServerStepper {
             #[cfg(feature = "test_utils")]
             TestHelper::default(),
         ));
-        let (crossbeam_client, crossbeam_server) = lightyear_crossbeam::CrossbeamIo::new_pair();
+        let (crossbeam_client, crossbeam_server) =
+            lightyear_link::crossbeam::CrossbeamIo::new_pair();
         client.insert((crossbeam_client, RawClient));
         self.client_of_entities.push(
             self.server_app
@@ -276,7 +273,7 @@ impl ClientServerStepper {
     }
 
     pub fn default_no_init() -> Self {
-        Self::new_server(TICK_DURATION, TICK_DURATION, None)
+        Self::new_server(TICK_DURATION, TICK_DURATION)
     }
 
     pub fn client_app(&mut self) -> &mut App {

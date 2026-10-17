@@ -3,8 +3,10 @@
 use crate::stepper::*;
 use bevy::prelude::*;
 use bevy_replicon::shared::server_entity_map::ServerEntityMap;
-use lightyear::prelude::*;
+use lightyear_connection::prelude::*;
 use lightyear_core::prediction::Predicted;
+use lightyear_core::prelude::*;
+use lightyear_replication::prelude::*;
 use lightyear_replication::visibility::immediate::VisibilityExt;
 use test_log::test;
 

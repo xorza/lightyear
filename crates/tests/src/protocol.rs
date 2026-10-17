@@ -5,10 +5,14 @@ use bevy_replicon::bytes::Bytes;
 use bevy_replicon::postcard_utils;
 use bevy_replicon::shared::replication::diff::Diffable as RepliconDiffable;
 use bevy_replicon::shared::replication::registry::ctx::{SerializeCtx, WriteCtx};
-use lightyear::frame_interpolation::FrameInterpolationPlugin;
-use lightyear::prelude::*;
 use lightyear_connection::direction::NetworkDirection;
+use lightyear_interpolation::frame_interpolation::FrameInterpolationPlugin;
+use lightyear_interpolation::prelude::*;
+use lightyear_messages::prelude::*;
+use lightyear_prediction::prelude::*;
 use lightyear_replication::diffable::Diffable as LightyearDiffable;
+use lightyear_replication::prelude::*;
+use lightyear_transport::prelude::*;
 use serde::{Deserialize, Serialize};
 
 // Messages

@@ -16,9 +16,14 @@ lightyear = { workspace = true, features = [
   "compression_lz4",
   "interpolation",
   "metrics",
-  ] }
+] }
+lightyear_connection.workspace = true
+lightyear_messages.workspace = true
 lightyear_replication.workspace = true
+lightyear_transport.workspace = true
 lightyear_tests = { workspace = true }
+metrics.workspace = true
+metrics-util.workspace = true
 
 # enable all the bevy defaults:
 bevy = { workspace = true, default-features = true }

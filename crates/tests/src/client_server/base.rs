@@ -1,9 +1,17 @@
 use crate::protocol::StringMessage;
 use crate::stepper::*;
-use lightyear::prelude::client::*;
-use lightyear::prelude::*;
+use aeronet_io::connection::{LocalAddr, PeerAddr};
+use lightyear_connection::prelude::client::*;
 use lightyear_connection::server::{Started, Stop, Stopped};
-use lightyear_crossbeam::CrossbeamIo;
+use lightyear_core::prelude::*;
+use lightyear_interpolation::prelude::*;
+use lightyear_link::crossbeam::CrossbeamIo;
+use lightyear_link::prelude::*;
+use lightyear_messages::prelude::*;
+use lightyear_replication::prelude::*;
+use lightyear_sync::prelude::client::*;
+use lightyear_sync::prelude::*;
+use lightyear_transport::prelude::*;
 use test_log::test;
 
 /// Check that the client/server setup is correct:

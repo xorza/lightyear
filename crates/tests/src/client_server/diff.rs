@@ -8,15 +8,15 @@ use bevy_replicon::shared::replication::diff::diff_index::DiffIndex;
 use bevy_replicon::shared::replication::registry::ReplicationRegistry;
 use bevy_replicon::shared::replication::registry::test_fns::TestFnsEntityExt;
 use bevy_replicon::shared::server_entity_map::ServerEntityMap;
-use lightyear::prelude::{
-    InterpolationMarkerPlugin, InterpolationPlugin, InterpolationRegistrationExt,
-    PredictionBuilderExt,
-};
 use lightyear_connection::network_target::NetworkTarget;
 use lightyear_core::prelude::{ConfirmedHistory, HistoryState, Interpolated};
+use lightyear_interpolation::plugin::InterpolationMarkerPlugin;
+use lightyear_interpolation::plugin::InterpolationPlugin;
+use lightyear_interpolation::registry::InterpolationRegistrationExt;
 use lightyear_prediction::Predicted;
 use lightyear_prediction::manager::PredictionManager;
 use lightyear_prediction::plugin::{PredictionMarkerPlugin, PredictionPlugin};
+use lightyear_prediction::prelude::PredictionBuilderExt;
 use lightyear_replication::checkpoint::ReplicationCheckpointMap;
 use lightyear_replication::prelude::{
     AppComponentExt, InterpolationTarget, PredictionTarget, Replicate,

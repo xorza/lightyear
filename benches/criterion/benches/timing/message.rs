@@ -2,7 +2,7 @@
 #![allow(unused_imports)]
 
 use criterion::{BatchSize, Criterion, criterion_group, criterion_main};
-use lightyear::prelude::MessageSender;
+use lightyear_messages::send::MessageSender;
 use lightyear_tests::protocol::{Channel1, StringMessage};
 use lightyear_tests::stepper::{ClientServerStepper, StepperConfig};
 

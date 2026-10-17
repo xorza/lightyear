@@ -8,13 +8,15 @@ use bevy::prelude::{
 use bevy::utils::default;
 use bevy_replicon::prelude::Signature;
 use bevy_replicon::shared::server_entity_map::ServerEntityMap;
-use lightyear::prelude::LocalTimeline;
-use lightyear::prelude::{Link, LinkConditionerConfig, RecvLinkConditioner};
 use lightyear_connection::network_target::NetworkTarget;
 use lightyear_core::history_buffer::HistoryState;
 use lightyear_core::prelude::ConfirmedHistory;
 use lightyear_core::prelude::Tick;
+use lightyear_core::timeline::LocalTimeline;
 use lightyear_core::timeline::is_in_rollback;
+use lightyear_link::Link;
+use lightyear_link::RecvLinkConditioner;
+use lightyear_link::prelude::LinkConditionerConfig;
 use lightyear_prediction::Predicted;
 use lightyear_prediction::despawn::{PredictionDespawnCommandsExt, PredictionDisable};
 use lightyear_prediction::diagnostics::PredictionMetrics;

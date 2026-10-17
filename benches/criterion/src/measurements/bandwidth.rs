@@ -1,8 +1,6 @@
+use crate::measurements::recorder::MetricsSnapshot;
 use criterion::Throughput;
 use criterion::measurement::{Measurement, ValueFormatter};
-use lightyear::metrics::metrics::Key;
-use lightyear::metrics::metrics_util::{CompositeKey, MetricKind};
-use lightyear::prelude::MetricsRegistry;
 use lightyear_replication::channels::{RepliconMutationsChannel, RepliconUpdatesChannel};
 
 pub struct Bandwidth;
@@ -13,73 +11,39 @@ pub enum BandwidthChannel {
 }
 
 impl Bandwidth {
-    fn channel_bytes(
-        registry: &MetricsRegistry,
-        metric_name: &'static str,
-        channel_name: &'static str,
-    ) -> f64 {
-        registry
-            .fetch_metric_value(&CompositeKey::new(
-                MetricKind::Gauge,
-                Key::from_parts(metric_name, &[("channel", channel_name)]),
-            ))
-            .unwrap_or_default()
-    }
-
     pub fn value(
-        registry: &MetricsRegistry,
+        metrics: &MetricsSnapshot,
         send: bool,
         recv: bool,
         channel: BandwidthChannel,
     ) -> f64 {
+        let (send_name, recv_name, channels): (_, _, &[&'static str]) = match channel {
+            BandwidthChannel::Total => ("transport/send_bytes", "transport/recv_bytes", &[]),
+            BandwidthChannel::Replication => (
+                "channel/send_bytes",
+                "channel/recv_bytes",
+                &[
+                    core::any::type_name::<RepliconUpdatesChannel>(),
+                    core::any::type_name::<RepliconMutationsChannel>(),
+                ],
+            ),
+        };
+        let bytes = |name| {
+            if channels.is_empty() {
+                metrics.gauge(name, &[])
+            } else {
+                channels
+                    .iter()
+                    .map(|channel| metrics.gauge(name, &[("channel", channel)]))
+                    .sum()
+            }
+        };
         let mut total = 0.0;
-        match channel {
-            BandwidthChannel::Total => {
-                if send {
-                    let send_bytes = registry
-                        .fetch_metric_value(&CompositeKey::new(
-                            MetricKind::Gauge,
-                            Key::from_name("transport/send_bytes"),
-                        ))
-                        .unwrap_or_default();
-                    total += send_bytes;
-                }
-                if recv {
-                    let recv_bytes = registry
-                        .fetch_metric_value(&CompositeKey::new(
-                            MetricKind::Gauge,
-                            Key::from_name("transport/recv_bytes"),
-                        ))
-                        .unwrap_or_default();
-                    total += recv_bytes;
-                }
-            }
-            BandwidthChannel::Replication => {
-                if send {
-                    total += Self::channel_bytes(
-                        registry,
-                        "channel/send_bytes",
-                        core::any::type_name::<RepliconUpdatesChannel>(),
-                    );
-                    total += Self::channel_bytes(
-                        registry,
-                        "channel/send_bytes",
-                        core::any::type_name::<RepliconMutationsChannel>(),
-                    );
-                }
-                if recv {
-                    total += Self::channel_bytes(
-                        registry,
-                        "channel/recv_bytes",
-                        core::any::type_name::<RepliconUpdatesChannel>(),
-                    );
-                    total += Self::channel_bytes(
-                        registry,
-                        "channel/recv_bytes",
-                        core::any::type_name::<RepliconMutationsChannel>(),
-                    );
-                }
-            }
+        if send {
+            total += bytes(send_name);
+        }
+        if recv {
+            total += bytes(recv_name);
         }
         total
     }

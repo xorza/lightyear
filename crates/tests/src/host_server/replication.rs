@@ -3,7 +3,7 @@ use crate::stepper::*;
 use bevy::prelude::{Entity, With};
 use bevy_replicon::prelude::Remote;
 use bevy_replicon::shared::server_entity_map::ServerEntityMap;
-use lightyear::prelude::client::Connect;
+use lightyear_connection::client::Connect;
 use lightyear_connection::network_target::NetworkTarget;
 use lightyear_core::id::RemoteId;
 use lightyear_core::interpolation::Interpolated;

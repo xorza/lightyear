@@ -1,7 +1,11 @@
 use bevy::ecs::schedule::{Schedules, SingleThreadedExecutor};
 use bevy::prelude::{Entity, FixedUpdate, Query, With};
 use bevy_replicon::shared::server_entity_map::ServerEntityMap;
-use lightyear::prelude::{MessageSender, NetworkTarget, Predicted, PredictionTarget, Replicate};
+use lightyear_connection::network_target::NetworkTarget;
+use lightyear_core::prediction::Predicted;
+use lightyear_messages::send::MessageSender;
+use lightyear_replication::send::PredictionTarget;
+use lightyear_replication::send::Replicate;
 use lightyear_tests::protocol::{Channel1, CompFull, StringMessage};
 use lightyear_tests::stepper::{ClientServerStepper, StepperConfig};
 

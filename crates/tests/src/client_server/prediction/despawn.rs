@@ -2,7 +2,10 @@ use crate::protocol::{CompFull, CompSimple};
 use crate::stepper::*;
 use bevy::prelude::Component;
 use bevy_replicon::shared::server_entity_map::ServerEntityMap;
-use lightyear::prelude::*;
+use lightyear_connection::prelude::*;
+use lightyear_core::prelude::*;
+use lightyear_prediction::prelude::*;
+use lightyear_replication::prelude::*;
 
 #[derive(Component, Debug, PartialEq)]
 struct TestComponent(usize);

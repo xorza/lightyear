@@ -1,10 +1,9 @@
-use lightyear::metrics::metrics::Key;
-use lightyear::metrics::metrics_util::{CompositeKey, MetricKind};
-use lightyear::prelude::{
-    CompressionConfig, GLOBAL_RECORDER, MessageSender, MetricsRegistry, Transport,
-};
+use crate::measurements::recorder::MetricsSnapshot;
+use lightyear_messages::send::MessageSender;
 use lightyear_tests::protocol::{Channel1, StringMessage};
 use lightyear_tests::stepper::{ClientServerStepper, StepperConfig};
+use lightyear_transport::channel::builder::Transport;
+use lightyear_transport::packet::compression::CompressionConfig;
 
 #[derive(Clone, Copy, Debug)]
 pub enum PayloadPattern {
@@ -98,10 +97,8 @@ pub fn prepare_transport_compression_case(
     case: TransportCompressionCase,
     mode: CompressionMode,
 ) -> PreparedTransportCompressionRun {
-    let mut config = StepperConfig::single();
-    config.server_registry = Some(GLOBAL_RECORDER.clone());
-    config.client_registry = Some(GLOBAL_RECORDER.clone());
-    let mut stepper = ClientServerStepper::from_config(config);
+    MetricsSnapshot::take();
+    let mut stepper = ClientServerStepper::from_config(StepperConfig::single());
     set_compression(&mut stepper, mode.config());
 
     for message_index in 0..case.messages {
@@ -119,10 +116,9 @@ pub fn prepare_transport_compression_case(
 pub fn run_prepared_transport_compression_case(
     prepared: &mut PreparedTransportCompressionRun,
 ) -> TransportCompressionRun {
-    let start = TransportCompressionRun::from_metrics(&GLOBAL_RECORDER);
+    MetricsSnapshot::take();
     prepared.stepper.frame_step_server_first(1);
-    let end = TransportCompressionRun::from_metrics(&GLOBAL_RECORDER);
-    end - start
+    TransportCompressionRun::from_metrics(&MetricsSnapshot::take())
 }
 
 pub fn print_transport_compression_stats_once(
@@ -159,59 +155,17 @@ fn set_compression(stepper: &mut ClientServerStepper, compression: CompressionCo
 }
 
 impl TransportCompressionRun {
-    fn from_metrics(registry: &MetricsRegistry) -> Self {
+    fn from_metrics(metrics: &MetricsSnapshot) -> Self {
         Self {
-            send_bytes: metric_value(registry, MetricKind::Gauge, "transport/send_bytes"),
-            compression_abandoned: metric_value(
-                registry,
-                MetricKind::Counter,
-                "transport/compression_abandoned",
-            ),
-            compression_saved_bytes: metric_value(
-                registry,
-                MetricKind::Counter,
-                "transport/compression_saved_bytes",
-            ),
-            compression_skipped: metric_value(
-                registry,
-                MetricKind::Counter,
-                "transport/compression_skipped",
-            ),
-            compression_expanded_packets: metric_value(
-                registry,
-                MetricKind::Counter,
-                "transport/compression_expanded_packets",
-            ),
-            compression_above_mtu_packets: metric_value(
-                registry,
-                MetricKind::Counter,
-                "transport/compression_above_mtu_packets",
-            ),
+            send_bytes: metrics.gauge("transport/send_bytes", &[]),
+            compression_abandoned: metrics.counter("transport/compression_abandoned"),
+            compression_saved_bytes: metrics.counter("transport/compression_saved_bytes"),
+            compression_skipped: metrics.counter("transport/compression_skipped"),
+            compression_expanded_packets: metrics.counter("transport/compression_expanded_packets"),
+            compression_above_mtu_packets: metrics
+                .counter("transport/compression_above_mtu_packets"),
         }
     }
-}
-
-impl core::ops::Sub for TransportCompressionRun {
-    type Output = Self;
-
-    fn sub(self, rhs: Self) -> Self::Output {
-        Self {
-            send_bytes: self.send_bytes - rhs.send_bytes,
-            compression_abandoned: self.compression_abandoned - rhs.compression_abandoned,
-            compression_saved_bytes: self.compression_saved_bytes - rhs.compression_saved_bytes,
-            compression_skipped: self.compression_skipped - rhs.compression_skipped,
-            compression_expanded_packets: self.compression_expanded_packets
-                - rhs.compression_expanded_packets,
-            compression_above_mtu_packets: self.compression_above_mtu_packets
-                - rhs.compression_above_mtu_packets,
-        }
-    }
-}
-
-fn metric_value(registry: &MetricsRegistry, kind: MetricKind, name: &'static str) -> f64 {
-    registry
-        .fetch_metric_value(&CompositeKey::new(kind, Key::from_name(name)))
-        .unwrap_or_default()
 }
 
 fn payload(pattern: PayloadPattern, len: usize, message_index: usize) -> String {

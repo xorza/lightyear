@@ -1,5 +1,6 @@
 use bevy::prelude::*;
-use lightyear::prelude::{NetworkTarget, Replicate};
+use lightyear_connection::network_target::NetworkTarget;
+use lightyear_replication::send::Replicate;
 use lightyear_tests::protocol::CompFull;
 use lightyear_tests::stepper::{ClientServerStepper, StepperConfig};
 use std::fs::File;

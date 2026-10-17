@@ -4,13 +4,16 @@ use std::sync::Mutex;
 use bevy::ecs::schedule::{Schedules, SingleThreadedExecutor};
 use bevy::prelude::{Entity, FixedUpdate, Query, Res, ResMut, Resource, Update, With};
 use bevy_replicon::shared::server_entity_map::ServerEntityMap;
-use lightyear::prelude::{
-    MessageReceiver, MessageSender, NetworkTarget, Predicted, PredictionTarget, Replicate,
-    Transport,
-};
+use lightyear_connection::network_target::NetworkTarget;
+use lightyear_core::prediction::Predicted;
+use lightyear_messages::receive::MessageReceiver;
+use lightyear_messages::send::MessageSender;
 use lightyear_prediction::predicted_history::PredictionHistory;
+use lightyear_replication::send::PredictionTarget;
+use lightyear_replication::send::Replicate;
 use lightyear_tests::protocol::{Channel1, CompFull, StringMessage};
 use lightyear_tests::stepper::{ClientServerStepper, ClientType, StepperConfig};
+use lightyear_transport::channel::builder::Transport;
 use stats_alloc::{INSTRUMENTED_SYSTEM, Region, Stats, StatsAlloc};
 
 #[global_allocator]

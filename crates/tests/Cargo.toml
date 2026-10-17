@@ -1,5 +1,6 @@
 [package]
 name = "lightyear_tests"
+publish = false
 version.workspace = true
 authors.workspace = true
 edition.workspace = true
@@ -15,19 +16,16 @@ test_utils = [
   "lightyear_transport/test_utils",
   "lightyear_replication/test_utils",
   "lightyear_prediction/test_utils",
-  "lightyear_crossbeam/test_utils",
+  "lightyear_link/test_utils",
 ]
 
 [dependencies]
 lightyear = { workspace = true, features = [
   "client",
   "server",
-  "crossbeam",
-  "frame_interpolation",
   "metrics",
   "interpolation",
   "prediction",
-  "raw_connection",
   "replication",
 ] }
 lightyear_utils.workspace = true
@@ -35,15 +33,15 @@ lightyear_serde.workspace = true
 lightyear_transport = { workspace = true, features = ["client", "server"] }
 lightyear_core.workspace = true
 lightyear_messages = { workspace = true, features = ["client", "server"] }
-lightyear_raw_connection = { workspace = true, features = ["client", "server"] }
 lightyear_replication = { workspace = true, features = ["client", "server"] }
-lightyear_crossbeam.workspace = true
 lightyear_connection = { workspace = true, features = ["client", "server"] }
 lightyear_sync = { workspace = true, features = ["client", "server"] }
 lightyear_prediction.workspace = true
+lightyear_interpolation.workspace = true
 lightyear_link.workspace = true
 
 bevy_replicon.workspace = true
+aeronet_io.workspace = true
 
 # utils
 tracing.workspace = true

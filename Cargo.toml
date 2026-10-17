@@ -1,29 +1,23 @@
 [workspace]
 resolver = "3"
 members = [
-  "crates/core/lightyear",
-  "crates/io/crossbeam",
-  "crates/io/link",
-  "crates/connection/connection",
-  "crates/connection/raw_connection",
-  "crates/core/core",
-  "crates/core/sync",
-  "crates/core/utils",
-  "crates/core/frame_interpolation",
-  "crates/replication/replication",
-  "crates/replication/prediction",
-  "crates/replication/interpolation",
-  "crates/transport/serde",
-  "crates/transport/transport",
-  "crates/transport/messages",
-  "crates/tools/metrics",
-  "crates/tools/ui",
-  "crates/tools/tools",
+  "crates/connection",
+  "crates/core",
+  "crates/interpolation",
+  "crates/lightyear",
+  "crates/link",
+  "crates/messages",
+  "crates/prediction",
+  "crates/replication",
+  "crates/serde",
+  "crates/sync",
   "crates/tests",
+  "crates/transport",
+  "crates/utils",
   # internal
   "benches/*",
 ]
-default-members = ["crates/core/lightyear"]
+default-members = ["crates/lightyear"]
 exclude = []
 
 
@@ -54,23 +48,18 @@ debug = false
 
 
 [workspace.dependencies]
-lightyear_connection = { path = "crates/connection/connection", version = "0.30.1", default-features = false }
-lightyear_core = { path = "crates/core/core", version = "0.30.1", default-features = false }
-lightyear_crossbeam = { path = "crates/io/crossbeam", version = "0.30.1", default-features = false }
-lightyear_frame_interpolation = { path = "crates/core/frame_interpolation", version = "0.30.1", default-features = false }
-lightyear_interpolation = { path = "crates/replication/interpolation", version = "0.30.1", default-features = false }
-lightyear_messages = { path = "crates/transport/messages", version = "0.30.1", default-features = false }
-lightyear_metrics = { path = "crates/tools/metrics", version = "0.30.1", default-features = false }
-lightyear = { path = "crates/core/lightyear", version = "0.30.1", default-features = false }
-lightyear_transport = { path = "crates/transport/transport", version = "0.30.1", default-features = false }
-lightyear_prediction = { path = "crates/replication/prediction", version = "0.30.1", default-features = false }
-lightyear_link = { path = "crates/io/link", version = "0.30.1", default-features = false }
-lightyear_raw_connection = { path = "crates/connection/raw_connection", version = "0.30.1", default-features = false }
-lightyear_replication = { path = "crates/replication/replication", version = "0.30.1", default-features = false }
-lightyear_serde = { path = "crates/transport/serde", version = "0.30.1", default-features = false }
-lightyear_sync = { path = "crates/core/sync", version = "0.30.1", default-features = false }
-lightyear_tools = { path = "crates/tools/tools", version = "0.30.1", default-features = false }
-lightyear_utils = { path = "crates/core/utils", version = "0.30.1", default-features = false }
+lightyear_connection = { path = "crates/connection", version = "0.30.1", default-features = false }
+lightyear_core = { path = "crates/core", version = "0.30.1", default-features = false }
+lightyear_interpolation = { path = "crates/interpolation", version = "0.30.1", default-features = false }
+lightyear_messages = { path = "crates/messages", version = "0.30.1", default-features = false }
+lightyear = { path = "crates/lightyear", version = "0.30.1", default-features = false }
+lightyear_transport = { path = "crates/transport", version = "0.30.1", default-features = false }
+lightyear_prediction = { path = "crates/prediction", version = "0.30.1", default-features = false }
+lightyear_link = { path = "crates/link", version = "0.30.1", default-features = false }
+lightyear_replication = { path = "crates/replication", version = "0.30.1", default-features = false }
+lightyear_serde = { path = "crates/serde", version = "0.30.1", default-features = false }
+lightyear_sync = { path = "crates/sync", version = "0.30.1", default-features = false }
+lightyear_utils = { path = "crates/utils", version = "0.30.1", default-features = false }
 lightyear_tests = { path = "crates/tests", version = "0.30.1", default-features = false }
 
 # utils

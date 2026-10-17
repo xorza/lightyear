@@ -2,10 +2,12 @@ use super::*;
 use crate::protocol::{CompA, CompCorr, CompFull};
 use bevy::prelude::{Add, Commands, Component, Entity, On, Query, With};
 use bevy_replicon::shared::server_entity_map::ServerEntityMap;
-use lightyear::prelude::*;
+use lightyear_connection::prelude::*;
 use lightyear_core::history_buffer::HistoryState;
+use lightyear_core::prelude::*;
 use lightyear_prediction::Predicted;
 use lightyear_prediction::predicted_history::PredictionHistory;
+use lightyear_replication::prelude::*;
 use test_log::test;
 
 #[test]
@@ -41,7 +43,7 @@ fn test_history_added_when_prespawned_added() {
 #[test]
 fn test_prediction_history_received_from_initial_marker() {
     use crate::stepper::*;
-    use lightyear::prelude::ConfirmHistory;
+    use bevy_replicon::client::confirm_history::ConfirmHistory;
     use lightyear_connection::network_target::NetworkTarget;
     use lightyear_replication::checkpoint::ReplicationCheckpointMap;
     use lightyear_replication::prelude::{PredictionTarget, Replicate};
@@ -183,7 +185,7 @@ fn test_prediction_history_received_from_initial_marker() {
 
 #[test]
 fn test_manual_predicted_marker_backfills_existing_replicated_component() {
-    use lightyear::prelude::ConfirmHistory;
+    use bevy_replicon::client::confirm_history::ConfirmHistory;
     use lightyear_connection::network_target::NetworkTarget;
     use lightyear_replication::checkpoint::ReplicationCheckpointMap;
     use lightyear_replication::prelude::Replicate;
